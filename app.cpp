@@ -18,7 +18,7 @@ void drawHUD(){
     const char* lines[]={
         "3D Spider Simulation  |  OpenGL/GLUT  |  Bedroom",
         "W/S : Move Forward/Back       A/D : Turn Left/Right",
-        "Arrow UP/DOWN : Tilt Camera   Arrow L/R : Orbit",
+        "C : Change Surface at Edge    Arrow L/R : Orbit",
         "Mouse Drag : Free Orbit       Scroll/+/- : Zoom",
         "L : Light Switch              O : Open/Close Door",
         "ESC : Quit",
@@ -55,7 +55,7 @@ void display(){
     float targetX=spX+sn.x*0.45f;
     float targetY=spY+sn.y*0.45f+0.45f;
     float targetZ=spZ+sn.z*0.45f;
-    float ty=DEG2RAD(spYaw+camYawOfs);
+    float ty=DEG2RAD(camYawOfs-spYaw);
     float pr=DEG2RAD(camPitch);
     float ex=targetX+camDist*sinf(ty)*cosf(pr);
     float ey=targetY+camDist*sinf(pr);
@@ -99,6 +99,58 @@ void reshape(int w,int h){
 // ════════════════════════════════════════════════════════════
 //  INPUT
 // ════════════════════════════════════════════════════════════
+float clampf(float v,float lo,float hi){
+    return v<lo?lo:(v>hi?hi:v);
+}
+
+void switchSurfaceAtEdge(){
+    const float M=FLOOR_EDGE_MARGIN;
+    const float WO=WALL_ATTACH_OFFSET;
+    const float E=0.08f;
+
+    if(spSurface==SURF_FLOOR || spSurface==SURF_OBJECT_TOP){
+        if(spSurface==SURF_OBJECT_TOP) return;
+        if(spX<=-RW+M+E){ spSurface=SURF_WALL_X_NEG; spX=-RW+WO; spY=0.f; spYaw=0.f; }
+        else if(spX>=RW-M-E){ spSurface=SURF_WALL_X_POS; spX=RW-WO; spY=0.f; spYaw=0.f; }
+        else if(spZ<=-RD+M+E){ spSurface=SURF_WALL_Z_NEG; spZ=-RD+WO; spY=0.f; spYaw=0.f; }
+        else if(spZ>=RD-M-E){ spSurface=SURF_WALL_Z_POS; spZ=RD-WO; spY=0.f; spYaw=0.f; }
+    } else if(spSurface==SURF_CEILING){
+        if(spX<=-RW+M+E){ spSurface=SURF_WALL_X_NEG; spX=-RW+WO; spY=RH-M; spYaw=180.f; }
+        else if(spX>=RW-M-E){ spSurface=SURF_WALL_X_POS; spX=RW-WO; spY=RH-M; spYaw=180.f; }
+        else if(spZ<=-RD+M+E){ spSurface=SURF_WALL_Z_NEG; spZ=-RD+WO; spY=RH-M; spYaw=180.f; }
+        else if(spZ>=RD-M-E){ spSurface=SURF_WALL_Z_POS; spZ=RD-WO; spY=RH-M; spYaw=180.f; }
+    } else {
+        if(spY>=RH-M-E){
+            if(spSurface==SURF_WALL_X_NEG) spYaw=90.f;
+            else if(spSurface==SURF_WALL_X_POS) spYaw=-90.f;
+            else if(spSurface==SURF_WALL_Z_NEG) spYaw=0.f;
+            else if(spSurface==SURF_WALL_Z_POS) spYaw=180.f;
+            spSurface=SURF_CEILING;
+            spY=RH;
+            spX=clampf(spX,-RW+M,RW-M);
+            spZ=clampf(spZ,-RD+M,RD-M);
+        } else if(spY<=E){
+            if(spSurface==SURF_WALL_X_NEG) spYaw=90.f;
+            else if(spSurface==SURF_WALL_X_POS) spYaw=-90.f;
+            else if(spSurface==SURF_WALL_Z_NEG) spYaw=180.f;
+            else if(spSurface==SURF_WALL_Z_POS) spYaw=0.f;
+            spSurface=SURF_FLOOR;
+            spObjectIndex=-1;
+            spY=0.f;
+            spX=clampf(spX,-RW+M,RW-M);
+            spZ=clampf(spZ,-RD+M,RD-M);
+        } else if((spSurface==SURF_WALL_X_NEG || spSurface==SURF_WALL_X_POS) && spZ<=-RD+M+E){
+            spSurface=SURF_WALL_Z_NEG; spZ=-RD+WO; spYaw=0.f;
+        } else if((spSurface==SURF_WALL_X_NEG || spSurface==SURF_WALL_X_POS) && spZ>=RD-M-E){
+            spSurface=SURF_WALL_Z_POS; spZ=RD-WO; spYaw=0.f;
+        } else if((spSurface==SURF_WALL_Z_NEG || spSurface==SURF_WALL_Z_POS) && spX<=-RW+M+E){
+            spSurface=SURF_WALL_X_NEG; spX=-RW+WO; spYaw=0.f;
+        } else if((spSurface==SURF_WALL_Z_NEG || spSurface==SURF_WALL_Z_POS) && spX>=RW-M-E){
+            spSurface=SURF_WALL_X_POS; spX=RW-WO; spYaw=0.f;
+        }
+    }
+}
+
 void tryMove(float fwd,float turn){
     if(turn!=0.f) spYaw+=turn;
     if(fwd!=0.f){
@@ -106,7 +158,8 @@ void tryMove(float fwd,float turn){
         float nx=spX+f.x*fwd;
         float ny=spY+f.y*fwd;
         float nz=spZ+f.z*fwd;
-        const float M=1.2f;
+        const float M=FLOOR_EDGE_MARGIN;
+        const float WO=WALL_ATTACH_OFFSET;
         bool moved=true;
 
         if(spSurface==SURF_FLOOR || spSurface==SURF_OBJECT_TOP){
@@ -117,11 +170,12 @@ void tryMove(float fwd,float turn){
                 spY=0.f;
                 ny=0.f;
             }
-            if(nx<-RW+M){ spSurface=SURF_WALL_X_NEG; spObjectIndex=-1; spX=-RW+M; spY=ny; spZ=nz; spYaw=0.f; }
-            else if(nx>RW-M){ spSurface=SURF_WALL_X_POS; spObjectIndex=-1; spX=RW-M; spY=ny; spZ=nz; spYaw=0.f; }
-            else if(nz<-RD+M){ spSurface=SURF_WALL_Z_NEG; spObjectIndex=-1; spX=nx; spY=ny; spZ=-RD+M; spYaw=0.f; }
-            else if(nz>RD-M){ spSurface=SURF_WALL_Z_POS; spObjectIndex=-1; spX=nx; spY=ny; spZ=RD-M; spYaw=0.f; }
-            else {
+            if(nx<-RW+M || nx>RW-M || nz<-RD+M || nz>RD-M){
+                spX=clampf(nx,-RW+M,RW-M);
+                spZ=clampf(nz,-RD+M,RD-M);
+                spY=ny;
+                moved=false;
+            } else {
                 int c=climbBoxAt(nx,nz,0.20f);
                 if(spSurface==SURF_FLOOR && c>=0){
                     spSurface=SURF_OBJECT_TOP;
@@ -134,22 +188,23 @@ void tryMove(float fwd,float turn){
                 }
             }
         } else if(spSurface==SURF_CEILING){
-            if(nx<-RW+M){ spSurface=SURF_WALL_X_NEG; spX=-RW+M; spY=RH-M; spZ=nz; spYaw=180.f; }
-            else if(nx>RW-M){ spSurface=SURF_WALL_X_POS; spX=RW-M; spY=RH-M; spZ=nz; spYaw=180.f; }
-            else if(nz<-RD+M){ spSurface=SURF_WALL_Z_NEG; spX=nx; spY=RH-M; spZ=-RD+M; spYaw=180.f; }
-            else if(nz>RD-M){ spSurface=SURF_WALL_Z_POS; spX=nx; spY=RH-M; spZ=RD-M; spYaw=180.f; }
-            else { spX=nx; spY=RH; spZ=nz; }
+            if(nx<-RW+M || nx>RW-M || nz<-RD+M || nz>RD-M) moved=false;
+            spX=clampf(nx,-RW+M,RW-M);
+            spY=RH;
+            spZ=clampf(nz,-RD+M,RD-M);
         } else {
             if(spSurface==SURF_WALL_X_NEG || spSurface==SURF_WALL_X_POS){
-                nz=nz<-RD+M?-RD+M:(nz>RD-M?RD-M:nz);
-                nx=(spSurface==SURF_WALL_X_NEG)?-RW+M:RW-M;
+                if(nz<-RD+M || nz>RD-M || ny<0.f || ny>RH-M) moved=false;
+                nz=clampf(nz,-RD+M,RD-M);
+                ny=clampf(ny,0.f,RH-M);
+                nx=(spSurface==SURF_WALL_X_NEG)?-RW+WO:RW-WO;
             } else {
-                nx=nx<-RW+M?-RW+M:(nx>RW-M?RW-M:nx);
-                nz=(spSurface==SURF_WALL_Z_NEG)?-RD+M:RD-M;
+                if(nx<-RW+M || nx>RW-M || ny<0.f || ny>RH-M) moved=false;
+                nx=clampf(nx,-RW+M,RW-M);
+                ny=clampf(ny,0.f,RH-M);
+                nz=(spSurface==SURF_WALL_Z_NEG)?-RD+WO:RD-WO;
             }
-            if(ny>=RH-M){ spSurface=SURF_CEILING; spX=nx; spY=RH; spZ=nz; spYaw=0.f; }
-            else if(ny<=0.f){ spSurface=SURF_FLOOR; spObjectIndex=-1; spX=nx; spY=0.f; spZ=nz; spYaw=0.f; }
-            else { spX=nx; spY=ny; spZ=nz; }
+            spX=nx; spY=ny; spZ=nz;
         }
 
         if(moved) walkPh+=fabsf(fwd)*4.0f;
@@ -163,6 +218,7 @@ void keyboard(unsigned char k,int,int){
         case's':case'S': keyBack=true;    break;
         case'a':case'A': keyLeft=true;    break;
         case'd':case'D': keyRight=true;   break;
+        case'c':case'C': switchSurfaceAtEdge(); glutPostRedisplay(); break;
         case'l':case'L': lightOn=!lightOn; glutPostRedisplay(); break;
         case'o':case'O': doorOpening=!doorOpening; glutPostRedisplay(); break;
         case'+':case'=': camDist-=0.7f; if(camDist<DMIN)camDist=DMIN; glutPostRedisplay(); break;
@@ -182,8 +238,8 @@ void specialKey(int k,int,int){
     switch(k){
         case GLUT_KEY_UP:    camPitch+=2.5f; if(camPitch>82)camPitch=82; break;
         case GLUT_KEY_DOWN:  camPitch-=2.5f; if(camPitch<-15)camPitch=-15; break;
-        case GLUT_KEY_LEFT:  camYawOfs-=4.f; break;
-        case GLUT_KEY_RIGHT: camYawOfs+=4.f; break;
+        case GLUT_KEY_LEFT:  camYawOfs+=4.f; break;
+        case GLUT_KEY_RIGHT: camYawOfs-=4.f; break;
     }
     glutPostRedisplay();
 }
@@ -194,7 +250,7 @@ void mouseBtn(int btn,int state,int x,int y){
 }
 void mouseMove(int x,int y){
     if(!mdown)return;
-    camYawOfs+=(x-lmx)*0.42f;
+    camYawOfs-=(x-lmx)*0.42f;
     camPitch  -=(y-lmy)*0.28f;
     if(camPitch>82)camPitch=82; if(camPitch<-15)camPitch=-15;
     lmx=x;lmy=y; glutPostRedisplay();
@@ -219,7 +275,7 @@ void timerFunc(int){
 
     // Smooth continuous spider movement.
     float moveInput=(keyForward?1.f:0.f)-(keyBack?1.f:0.f);
-    float turnInput=(keyLeft?1.f:0.f)-(keyRight?1.f:0.f);
+    float turnInput=(keyRight?1.f:0.f)-(keyLeft?1.f:0.f);
     float targetMove=moveInput*MOVE_SPEED;
     float targetTurn=turnInput*TURN_SPEED;
     float moveEase=1.f-expf(-dtSec*8.0f);

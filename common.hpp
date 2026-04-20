@@ -18,6 +18,7 @@
  * ║  CONTROLS:                                                       ║
  * ║  W/S           – move forward / backward                        ║
  * ║  A/D           – turn left / right                              ║
+ * ║  C             – change surface at an edge/corner               ║
  * ║  Arrow UP/DN   – camera tilt                                    ║
  * ║  Arrow L/R     – camera orbit                                   ║
  * ║  Mouse drag    – free camera orbit                              ║
@@ -71,6 +72,8 @@ const float MSTEP=0.14f, TSTEP=2.5f;
 bool keyForward=false, keyBack=false, keyLeft=false, keyRight=false;
 float spMoveVel=0.f, spTurnVel=0.f;
 const float MOVE_SPEED=4.2f, TURN_SPEED=120.f;
+const float FLOOR_EDGE_MARGIN=1.2f;
+const float WALL_ATTACH_OFFSET=0.04f;
 enum SurfaceType { SURF_FLOOR, SURF_CEILING, SURF_WALL_X_NEG, SURF_WALL_X_POS, SURF_WALL_Z_NEG, SURF_WALL_Z_POS, SURF_OBJECT_TOP };
 SurfaceType spSurface=SURF_FLOOR;
 int spObjectIndex=-1;
@@ -199,7 +202,7 @@ bool collides(float nx,float nz){
     return false;
 }
 void clampRoom(float &x,float &z){
-    float M=1.2f;
+    float M=FLOOR_EDGE_MARGIN;
     if(x<-RW+M)x=-RW+M; if(x>RW-M)x=RW-M;
     if(z<-RD+M)z=-RD+M; if(z>RD-M)z=RD-M;
 }

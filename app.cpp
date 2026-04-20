@@ -51,16 +51,20 @@ void display(){
     glLoadIdentity();
 
     // Camera
+    Vec3 sn=surfaceNormal(spSurface);
+    float targetX=spX+sn.x*0.45f;
+    float targetY=spY+sn.y*0.45f+0.45f;
+    float targetZ=spZ+sn.z*0.45f;
     float ty=DEG2RAD(spYaw+camYawOfs);
     float pr=DEG2RAD(camPitch);
-    float ex=spX+camDist*sinf(ty)*cosf(pr);
-    float ey=0.70f+camDist*sinf(pr);
-    float ez=spZ+camDist*cosf(ty)*cosf(pr);
+    float ex=targetX+camDist*sinf(ty)*cosf(pr);
+    float ey=targetY+camDist*sinf(pr);
+    float ez=targetZ+camDist*cosf(ty)*cosf(pr);
     const float CM=0.3f;
     if(ex<-RW+CM)ex=-RW+CM; if(ex>RW-CM)ex=RW-CM;
     if(ez<-RD+CM)ez=-RD+CM; if(ez>RD-CM)ez=RD-CM;
     if(ey<CM)ey=CM;          if(ey>RH-CM)ey=RH-CM;
-    gluLookAt(ex,ey,ez, spX,0.55f,spZ, 0,1,0);
+    gluLookAt(ex,ey,ez, targetX,targetY,targetZ, 0,1,0);
 
     setupLighting();
 
@@ -98,11 +102,57 @@ void reshape(int w,int h){
 void tryMove(float fwd,float turn){
     if(turn!=0.f) spYaw+=turn;
     if(fwd!=0.f){
-        float yr=DEG2RAD(spYaw);
-        float nx=spX+(-sinf(yr))*fwd;
-        float nz=spZ+(-cosf(yr))*fwd;
-        clampRoom(nx,nz);
-        if(!collides(nx,nz)){ spX=nx; spZ=nz; walkPh+=fabsf(fwd)*4.0f; }
+        Vec3 f=surfaceForward(spSurface,spYaw);
+        float nx=spX+f.x*fwd;
+        float ny=spY+f.y*fwd;
+        float nz=spZ+f.z*fwd;
+        const float M=1.2f;
+        bool moved=true;
+
+        if(spSurface==SURF_FLOOR || spSurface==SURF_OBJECT_TOP){
+            ny=spY;
+            if(spSurface==SURF_OBJECT_TOP && spObjectIndex>=0 && !insideClimbBox(spObjectIndex,nx,nz,0.18f)){
+                spSurface=SURF_FLOOR;
+                spObjectIndex=-1;
+                spY=0.f;
+                ny=0.f;
+            }
+            if(nx<-RW+M){ spSurface=SURF_WALL_X_NEG; spObjectIndex=-1; spX=-RW+M; spY=ny; spZ=nz; spYaw=0.f; }
+            else if(nx>RW-M){ spSurface=SURF_WALL_X_POS; spObjectIndex=-1; spX=RW-M; spY=ny; spZ=nz; spYaw=0.f; }
+            else if(nz<-RD+M){ spSurface=SURF_WALL_Z_NEG; spObjectIndex=-1; spX=nx; spY=ny; spZ=-RD+M; spYaw=0.f; }
+            else if(nz>RD-M){ spSurface=SURF_WALL_Z_POS; spObjectIndex=-1; spX=nx; spY=ny; spZ=RD-M; spYaw=0.f; }
+            else {
+                int c=climbBoxAt(nx,nz,0.20f);
+                if(spSurface==SURF_FLOOR && c>=0){
+                    spSurface=SURF_OBJECT_TOP;
+                    spObjectIndex=c;
+                    spX=nx; spZ=nz; spY=climbBoxes[c].top;
+                } else if(spSurface==SURF_FLOOR && collides(nx,nz)) {
+                    moved=false;
+                } else {
+                    spX=nx; spZ=nz; spY=ny;
+                }
+            }
+        } else if(spSurface==SURF_CEILING){
+            if(nx<-RW+M){ spSurface=SURF_WALL_X_NEG; spX=-RW+M; spY=RH-M; spZ=nz; spYaw=180.f; }
+            else if(nx>RW-M){ spSurface=SURF_WALL_X_POS; spX=RW-M; spY=RH-M; spZ=nz; spYaw=180.f; }
+            else if(nz<-RD+M){ spSurface=SURF_WALL_Z_NEG; spX=nx; spY=RH-M; spZ=-RD+M; spYaw=180.f; }
+            else if(nz>RD-M){ spSurface=SURF_WALL_Z_POS; spX=nx; spY=RH-M; spZ=RD-M; spYaw=180.f; }
+            else { spX=nx; spY=RH; spZ=nz; }
+        } else {
+            if(spSurface==SURF_WALL_X_NEG || spSurface==SURF_WALL_X_POS){
+                nz=nz<-RD+M?-RD+M:(nz>RD-M?RD-M:nz);
+                nx=(spSurface==SURF_WALL_X_NEG)?-RW+M:RW-M;
+            } else {
+                nx=nx<-RW+M?-RW+M:(nx>RW-M?RW-M:nx);
+                nz=(spSurface==SURF_WALL_Z_NEG)?-RD+M:RD-M;
+            }
+            if(ny>=RH-M){ spSurface=SURF_CEILING; spX=nx; spY=RH; spZ=nz; spYaw=0.f; }
+            else if(ny<=0.f){ spSurface=SURF_FLOOR; spObjectIndex=-1; spX=nx; spY=0.f; spZ=nz; spYaw=0.f; }
+            else { spX=nx; spY=ny; spZ=nz; }
+        }
+
+        if(moved) walkPh+=fabsf(fwd)*4.0f;
         else spMoveVel=0.f;
     }
 }

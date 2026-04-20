@@ -65,12 +65,15 @@ const float RD = 22.0f;   // half-depth  Z  → room is 44 units deep
 //  GLOBAL STATE
 // ════════════════════════════════════════════════════════════
 // Spider
-float spX=0.f, spZ=5.f, spYaw=0.f;
+float spX=0.f, spY=0.f, spZ=5.f, spYaw=0.f;
 float walkPh=0.f;
 const float MSTEP=0.14f, TSTEP=2.5f;
 bool keyForward=false, keyBack=false, keyLeft=false, keyRight=false;
 float spMoveVel=0.f, spTurnVel=0.f;
 const float MOVE_SPEED=4.2f, TURN_SPEED=120.f;
+enum SurfaceType { SURF_FLOOR, SURF_CEILING, SURF_WALL_X_NEG, SURF_WALL_X_POS, SURF_WALL_Z_NEG, SURF_WALL_Z_POS, SURF_OBJECT_TOP };
+SurfaceType spSurface=SURF_FLOOR;
+int spObjectIndex=-1;
 
 // Camera
 float camPitch=20.f, camDist=9.f, camYawOfs=180.f;
@@ -116,6 +119,74 @@ AABB cols[NC] = {
     // rug (just decoration, no collision needed → dummy)
     {  0.0f,    99.0f,     0.1f,  0.1f },
 };
+
+struct ClimbBox { float cx,cz,hw,hd,top; };
+const int NCLIMB = 6;
+ClimbBox climbBoxes[NCLIMB] = {
+    { -4.5f,    -RD+5.5f,   4.5f,  5.5f,  2.22f }, // bed
+    { RW-3.0f,  -RD+1.8f,   3.0f,  1.8f, 10.95f }, // wardrobe / almirah
+    {-RW+2.5f,  -RD+1.5f,   2.5f,  1.5f, 10.95f }, // bookshelf
+    {  8.0f,    -RD+1.5f,   2.0f,  1.5f,  5.20f }, // dresser
+    { RW-2.0f,   2.0f,      2.0f,  3.5f,  3.45f }, // study desk
+    {-10.5f,    -RD+2.5f,   1.5f,  1.5f,  2.32f }, // bedside table
+};
+
+bool insideClimbBox(int i,float x,float z,float margin=0.f){
+    return fabsf(x-climbBoxes[i].cx)<=climbBoxes[i].hw+margin &&
+           fabsf(z-climbBoxes[i].cz)<=climbBoxes[i].hd+margin;
+}
+
+int climbBoxAt(float x,float z,float margin=0.f){
+    for(int i=0;i<NCLIMB;i++) if(insideClimbBox(i,x,z,margin)) return i;
+    return -1;
+}
+
+struct Vec3 { float x,y,z; };
+Vec3 v3(float x,float y,float z){ Vec3 v={x,y,z}; return v; }
+Vec3 vadd(Vec3 a,Vec3 b){ return v3(a.x+b.x,a.y+b.y,a.z+b.z); }
+Vec3 vscale(Vec3 a,float s){ return v3(a.x*s,a.y*s,a.z*s); }
+float vdot(Vec3 a,Vec3 b){ return a.x*b.x+a.y*b.y+a.z*b.z; }
+Vec3 vcross(Vec3 a,Vec3 b){ return v3(a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x); }
+Vec3 vnorm(Vec3 a){
+    float l=sqrtf(vdot(a,a));
+    return l>0.0001f ? vscale(a,1.0f/l) : v3(0,1,0);
+}
+
+Vec3 surfaceNormal(SurfaceType s){
+    switch(s){
+        case SURF_CEILING:    return v3(0,-1,0);
+        case SURF_WALL_X_NEG: return v3(1,0,0);
+        case SURF_WALL_X_POS: return v3(-1,0,0);
+        case SURF_WALL_Z_NEG: return v3(0,0,1);
+        case SURF_WALL_Z_POS: return v3(0,0,-1);
+        default:              return v3(0,1,0);
+    }
+}
+
+Vec3 surfaceBaseForward(SurfaceType s){
+    switch(s){
+        case SURF_CEILING:    return v3(0,0,1);
+        case SURF_WALL_X_NEG:
+        case SURF_WALL_X_POS:
+        case SURF_WALL_Z_NEG:
+        case SURF_WALL_Z_POS: return v3(0,1,0);
+        default:              return v3(0,0,-1);
+    }
+}
+
+Vec3 surfaceForward(SurfaceType s,float yaw){
+    Vec3 n=surfaceNormal(s);
+    Vec3 f=surfaceBaseForward(s);
+    Vec3 r=vnorm(vcross(f,n));
+    float a=DEG2RAD(yaw), c=cosf(a), sn=sinf(a);
+    return vnorm(vadd(vscale(f,c),vscale(r,sn)));
+}
+
+void surfaceBasis(SurfaceType s,float yaw,Vec3 &right,Vec3 &up,Vec3 &forward){
+    up=surfaceNormal(s);
+    forward=surfaceForward(s,yaw);
+    right=vnorm(vcross(forward,up));
+}
 
 bool collides(float nx,float nz){
     const float SR=1.0f;

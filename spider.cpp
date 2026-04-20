@@ -26,7 +26,10 @@ void drawLegSegment(float x0,float y0,float z0,float x1,float y1,float z1,float 
     if(len<0.0001f) return;
     float ax=dz, ay=0.f, az=-dx;
     float al=sqrtf(ax*ax+az*az);
-    float ang=acosf(dy/len)*180.0f/(float)M_PI;
+    float ca=dy/len;
+    if(ca>1.f) ca=1.f;
+    if(ca<-1.f) ca=-1.f;
+    float ang=acosf(ca)*180.0f/(float)M_PI;
 
     spiderLegMat();
     glPushMatrix();
@@ -80,10 +83,18 @@ void drawReferenceSpiderLeg(int legIndex,int side,int pairIndex,float){
 void drawSpider(){
     float stride = fabsf(spMoveVel)/MOVE_SPEED;
     float bob = sinf(walkPh*2.f)*0.035f*stride;
+    Vec3 right,up,forward;
+    surfaceBasis(spSurface,spYaw,right,up,forward);
 
     glPushMatrix();
-    glTranslatef(spX, bob, spZ);
-    glRotatef(spYaw,0,1,0);
+    Vec3 pos=vadd(v3(spX,spY,spZ),vscale(up,bob));
+    GLfloat m[16]={
+        right.x, right.y, right.z, 0.f,
+        up.x, up.y, up.z, 0.f,
+        -forward.x, -forward.y, -forward.z, 0.f,
+        pos.x, pos.y, pos.z, 1.f
+    };
+    glMultMatrixf(m);
     glScalef(0.80f,0.80f,0.80f);
 
     spiderBodyMat(0.22f);
@@ -143,14 +154,14 @@ void drawSpider(){
     }
 
     for(int s=-1;s<=1;s+=2){
-        float p=sinf(walkPh+s*(float)M_PI*0.25f)*0.035f;
-        float x0=s*0.22f, y0=0.42f, z0=-0.83f;
-        float x1=s*0.34f, y1=0.30f, z1=-1.05f+p;
-        float x2=s*0.40f, y2=0.19f, z2=-1.22f+p*0.5f;
+        float p=sinf(walkPh+s*(float)M_PI*0.25f)*0.025f;
+        float x0=s*0.16f, y0=0.50f, z0=-0.88f;
+        float x1=s*0.30f, y1=0.47f, z1=-1.12f+p;
+        float x2=s*0.43f, y2=0.42f, z2=-1.38f+p*0.5f;
         drawLegSegment(x0,y0,z0,x1,y1,z1,0.052f,0.036f);
         drawLegJoint(x1,y1,z1,0.040f);
-        drawLegSegment(x1,y1,z1,x2,y2,z2,0.036f,0.014f);
-        drawLegJoint(x2,y2,z2,0.026f);
+        drawLegSegment(x1,y1,z1,x2,y2,z2,0.034f,0.010f);
+        drawLegJoint(x2,y2,z2,0.018f);
     }
     noTex();
 
@@ -163,6 +174,7 @@ void drawSpider(){
 // ════════════════════════════════════════════════════════════
 void drawSpiderShadow(){
     if(!lightOn) return;
+    if(spSurface!=SURF_FLOOR && spSurface!=SURF_OBJECT_TOP) return;
     // Shadow matrix projecting from light position onto y=0 plane
     // Light at (0, RH-0.5, 0)
     float lx=0,ly=RH-0.5f,lz=0;

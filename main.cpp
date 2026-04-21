@@ -4,7 +4,7 @@
  * Compile commands remain unchanged because the implementation modules are
  * included below in the same order they originally appeared in main.cpp.
  *
- * Linux : g++ main.cpp -o spider -lGL -lGLU -lglut -lm
+ * Linux : g++ main.cpp -o spider -lGL -lGLU -lglut -ljpeg -lpng16 -lm
  * Mac   : g++ main.cpp -o spider -framework OpenGL -framework GLUT -lm
  * Win   : g++ main.cpp -o spider -lfreeglut -lopengl32 -lglu32
  */
@@ -33,17 +33,12 @@ int main(int argc,char**argv){
     glEnable(GL_LIGHTING);
     glShadeModel(GL_SMOOTH);
     glEnable(GL_NORMALIZE);
+    glDisable(GL_COLOR_MATERIAL);
     glEnable(GL_TEXTURE_2D);
     glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,GL_TRUE);
-    glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
+    glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER,GL_TRUE);
 
-    // Fog for depth (subtle)
-    glEnable(GL_FOG);
-    GLfloat fogColor[]={0.08f,0.07f,0.06f,1.0f};
-    glFogfv(GL_FOG_COLOR,fogColor);
-    glFogf(GL_FOG_MODE,GL_EXP2);
-    glFogf(GL_FOG_DENSITY,0.0055f);
+    glDisable(GL_FOG);
 
     initTextures();
     lastMs=glutGet(GLUT_ELAPSED_TIME);

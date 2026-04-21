@@ -28,7 +28,7 @@
  * ║  ESC           – quit                                           ║
  * ╠══════════════════════════════════════════════════════════════════╣
  * ║  COMPILE:                                                        ║
- * ║  Linux : g++ main.cpp -o spider -lGL -lGLU -lglut -lm          ║
+ * ║  Linux : g++ main.cpp -o spider -lGL -lGLU -lglut -ljpeg -lpng16 -lm ║
  * ║  Mac   : g++ main.cpp -o spider -framework OpenGL               ║
  * ║                        -framework GLUT -lm                      ║
  * ║  Win   : g++ main.cpp -o spider -lfreeglut -lopengl32 -lglu32  ║
@@ -87,6 +87,63 @@ int lmx=-1,lmy=-1; bool mdown=false;
 bool lightOn = true;
 float lightBrightness = 1.0f;   // animated 0→1 on switch
 
+// Lighting tuning
+// Keep all experiment-friendly light numbers here so you can adjust the room
+// look without digging through the rendering code.
+struct LightingTuning {
+    // Ceiling light position. `yOffsetFromCeiling` pushes the light source
+    // slightly below the ceiling plane so highlights and shadows read naturally.
+    float x;
+    float z;
+    float yOffsetFromCeiling;
+
+    // Base room ambient. Higher values lift the darkest parts of the room.
+    float globalAmbient;
+
+    // Overall brightness multiplier for the ceiling light.
+    float intensityScale;
+
+    // Warm light colors for the actual OpenGL light.
+    float diffuseColor[3];
+    float specularColor[3];
+    float localAmbientColor[3];
+
+    // Distance falloff. Lower attenuation reaches farther across the room.
+    float constantAttenuation;
+    float linearAttenuation;
+    float quadraticAttenuation;
+
+    // Visible diffuser glow color when the light is on.
+    float diffuserOnColor[3];
+
+    // Visible diffuser tint when the light is off.
+    float diffuserOffColor[3];
+
+    // Material response for the glowing diffuser mesh.
+    float diffuserAmbientScale;
+    float diffuserSpecularColor[3];
+    float diffuserShininess;
+
+    // Smoothness of the light switch fade animation.
+    float brightnessLerpSpeed;
+};
+
+const LightingTuning LIGHTING = {
+    0.0f, 0.0f, 0.72f,
+    0.7f,
+    2.8f,
+    {1.06f, 1.02f, 0.96f},
+    {0.42f, 0.40f, 0.36f},
+    {0.16f, 0.15f, 0.13f},
+    1.0f, 0.020f, 0.0015f,
+    {0.96f, 0.92f, 0.78f},
+    {0.40f, 0.38f, 0.32f},
+    0.30f,
+    {0.95f, 0.92f, 0.82f},
+    18.0f,
+    4.5f
+};
+
 // Door
 float doorAngle = 0.f;           // 0=closed, 90=open
 bool  doorOpening = false;
@@ -126,7 +183,7 @@ AABB cols[NC] = {
 struct ClimbBox { float cx,cz,hw,hd,top; };
 const int NCLIMB = 6;
 ClimbBox climbBoxes[NCLIMB] = {
-    { -4.5f,    -RD+5.5f,   4.5f,  5.5f,  2.22f }, // bed
+    { -4.5f,    -RD+5.5f,   4.5f,  5.5f,  1.52f }, // bed
     { RW-3.0f,  -RD+1.8f,   3.0f,  1.8f, 10.95f }, // wardrobe / almirah
     {-RW+2.5f,  -RD+1.5f,   2.5f,  1.5f, 10.95f }, // bookshelf
     {  8.0f,    -RD+1.5f,   2.0f,  1.5f,  5.20f }, // dresser
@@ -215,16 +272,12 @@ void mat(float ar,float ag,float ab,
          float sr,float sg,float sb,float sh,
          float er=0,float eg=0,float eb=0)
 {
-    // Scale diffuse by lightBrightness so lights feel physical
-    float scale = lightOn ? lightBrightness : 0.08f;
-    GLfloat a[]={ar*scale,ag*scale,ab*scale,1.f};
-    GLfloat d[]={dr,dg,db,1.f};  // diffuse let light handle
+    const float ambientMaterialScale = 0.46f;
+    GLfloat a[]={ar*ambientMaterialScale,ag*ambientMaterialScale,ab*ambientMaterialScale,1.f};
+    GLfloat d[]={dr,dg,db,1.f};
     GLfloat s[]={sr,sg,sb,1.f};
     GLfloat e[]={er,eg,eb,1.f};
-    (void)a; // ambient scaled separately via glLightModel
-    // just set normally; scaling happens in light config
-    GLfloat aa[]={ar,ag,ab,1.f};
-    glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,  aa);
+    glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,  a);
     glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,  d);
     glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR, s);
     glMaterialf (GL_FRONT_AND_BACK,GL_SHININESS,sh);

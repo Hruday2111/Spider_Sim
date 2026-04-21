@@ -41,11 +41,7 @@ void drawHUD(){
 //  DISPLAY
 // ════════════════════════════════════════════════════════════
 void display(){
-    // Background: dark blue-grey when light off, warm when on
-    if(lightOn)
-        glClearColor(0.12f*lightBrightness,0.10f*lightBrightness,0.08f*lightBrightness,1.f);
-    else
-        glClearColor(0.02f,0.02f,0.04f,1.f);
+    glClearColor(0.0f,0.0f,0.0f,1.f);
 
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
@@ -267,7 +263,7 @@ void timerFunc(int){
 
     // Light brightness animation (smooth transition)
     float target=lightOn?1.0f:0.0f;
-    lightBrightness+=(target-lightBrightness)*dtSec*4.5f;
+    lightBrightness+=(target-lightBrightness)*dtSec*LIGHTING.brightnessLerpSpeed;
 
     // Door animation
     float targetDoor=doorOpening?90.f:0.f;

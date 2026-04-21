@@ -24,14 +24,20 @@ void drawPainting(float cx,float cy,float cz, float pw,float ph, int texID, bool
     } else {
         glTranslatef(cx,cy,cz);
     }
-    // Gold frame
+    // Gold frame drawn as a flat border so no side slab appears from angled views.
     noTex();
     mat(0.30f,0.22f,0.05f, 0.55f,0.42f,0.08f, 0.90f,0.80f,0.45f,80);
     float fb=0.12f; // frame border
-    box(pw+fb*2, ph+fb*2, 0.08f);
-    // Canvas
+    float frameZ = 0.01f;
+    glPushMatrix(); glTranslatef(0, ph/2 + fb/2, frameZ); box(pw + fb*2, fb, 0.02f); glPopMatrix();
+    glPushMatrix(); glTranslatef(0,-ph/2 - fb/2, frameZ); box(pw + fb*2, fb, 0.02f); glPopMatrix();
+    glPushMatrix(); glTranslatef(-pw/2 - fb/2,0, frameZ); box(fb, ph, 0.02f); glPopMatrix();
+    glPushMatrix(); glTranslatef( pw/2 + fb/2,0, frameZ); box(fb, ph, 0.02f); glPopMatrix();
+
+    // Canvas uses a neutral material so the imported image is not tinted by the gold frame.
     glPushMatrix();
-    glTranslatef(0,0,0.05f);
+    glTranslatef(0,0,0.03f);
+    mat(0.90f,0.90f,0.90f, 1.0f,1.0f,1.0f, 0.05f,0.05f,0.05f,8);
     texQuad(pw,ph,texID);
     glPopMatrix();
     glPopMatrix();
@@ -139,44 +145,50 @@ void drawBookshelf(){
 
 void drawBed(){
     float bdX=-4.5f, bdZ=-RD+5.5f;
-    // Frame (dark wood)
+    // Lower the whole frame and extend the support structure so the bed sits on the floor.
     useTex(TEX_WOOD_DARK);
-    mat(0.16f,0.10f,0.05f, 0.34f,0.21f,0.11f, 0.18f,0.13f,0.08f,15);
-    glPushMatrix(); glTranslatef(bdX,0.75f,bdZ); box(8.0f,1.50f,10.0f,5.f,6.f); glPopMatrix();
+    mat(0.18f,0.11f,0.06f, 0.40f,0.25f,0.13f, 0.20f,0.14f,0.08f,16);
+    glPushMatrix(); glTranslatef(bdX,0.34f,bdZ); box(7.9f,0.34f,9.4f,3.f,3.f); glPopMatrix();
+    glPushMatrix(); glTranslatef(bdX-4.05f,0.63f,bdZ); box(0.30f,0.58f,9.6f,1.f,3.f); glPopMatrix();
+    glPushMatrix(); glTranslatef(bdX+4.05f,0.63f,bdZ); box(0.30f,0.58f,9.6f,1.f,3.f); glPopMatrix();
+    glPushMatrix(); glTranslatef(bdX,0.63f,bdZ+4.85f); box(8.1f,0.58f,0.30f,3.f,1.f); glPopMatrix();
+    glPushMatrix(); glTranslatef(bdX,0.20f,bdZ); box(7.3f,0.18f,8.8f,2.f,2.f); glPopMatrix();
     // Mattress
     noTex();
-    mat(0.55f,0.50f,0.48f, 0.78f,0.72f,0.70f, 0.18f,0.16f,0.14f,12);
-    glPushMatrix(); glTranslatef(bdX,1.62f,bdZ+0.3f); box(7.6f,0.55f,8.8f); glPopMatrix();
+    mat(0.62f,0.58f,0.55f, 0.84f,0.78f,0.74f, 0.18f,0.16f,0.14f,12);
+    glPushMatrix(); glTranslatef(bdX,0.98f,bdZ+0.25f); box(7.55f,0.52f,8.65f); glPopMatrix();
     // Bedsheet (fabric texture)
     useTex(TEX_FABRIC_BED);
-    mat(0.45f,0.28f,0.22f, 0.68f,0.44f,0.36f, 0.15f,0.10f,0.08f,8);
-    glPushMatrix(); glTranslatef(bdX,1.92f,bdZ+1.0f); box(7.5f,0.10f,6.5f,3.f,4.f); glPopMatrix();
+    mat(0.48f,0.30f,0.24f, 0.72f,0.47f,0.38f, 0.15f,0.10f,0.08f,8);
+    glPushMatrix(); glTranslatef(bdX,1.30f,bdZ+1.0f); box(7.50f,0.10f,6.50f,2.f,2.f); glPopMatrix();
     // Blanket fold
     noTex();
-    mat(0.42f,0.25f,0.18f, 0.62f,0.38f,0.28f, 0.12f,0.08f,0.06f,8);
-    glPushMatrix(); glTranslatef(bdX,2.15f,bdZ+2.5f); glScalef(1,0.6f,1); box(7.5f,0.55f,1.5f); glPopMatrix();
+    mat(0.44f,0.27f,0.20f, 0.66f,0.41f,0.30f, 0.12f,0.08f,0.06f,8);
+    glPushMatrix(); glTranslatef(bdX,1.46f,bdZ+2.5f); glScalef(1,0.45f,1); box(7.5f,0.48f,1.5f); glPopMatrix();
     // Pillows x2
     mat(0.80f,0.76f,0.72f, 0.92f,0.88f,0.84f, 0.22f,0.20f,0.18f,18);
-    glPushMatrix(); glTranslatef(bdX-1.8f,2.10f,bdZ-3.2f); box(3.0f,0.52f,1.60f); glPopMatrix();
-    glPushMatrix(); glTranslatef(bdX+1.8f,2.10f,bdZ-3.2f); box(3.0f,0.52f,1.60f); glPopMatrix();
-    // Headboard – tall, dark wood, carved panels
+    glPushMatrix(); glTranslatef(bdX-1.8f,1.48f,bdZ-3.25f); box(3.0f,0.42f,1.50f); glPopMatrix();
+    glPushMatrix(); glTranslatef(bdX+1.8f,1.48f,bdZ-3.25f); box(3.0f,0.42f,1.50f); glPopMatrix();
+    // Headboard, scaled to realistic bedroom proportions.
     useTex(TEX_WOOD_DARK);
-    mat(0.15f,0.09f,0.05f, 0.30f,0.19f,0.10f, 0.20f,0.15f,0.09f,20);
-    glPushMatrix(); glTranslatef(bdX,4.85f,bdZ-5.15f); box(8.0f,6.8f,0.40f,5.f,4.f); glPopMatrix();
+    mat(0.17f,0.10f,0.06f, 0.36f,0.23f,0.12f, 0.22f,0.16f,0.10f,20);
+    glPushMatrix(); glTranslatef(bdX,2.15f,bdZ-5.02f); box(8.2f,3.2f,0.36f,5.f,2.f); glPopMatrix();
     // Headboard carved panel insets
     noTex();
-    mat(0.12f,0.07f,0.04f, 0.24f,0.14f,0.08f, 0.15f,0.10f,0.07f,15);
-    glPushMatrix(); glTranslatef(bdX-2.0f,5.15f,bdZ-4.96f); box(2.5f,5.2f,0.08f); glPopMatrix();
-    glPushMatrix(); glTranslatef(bdX+2.0f,5.15f,bdZ-4.96f); box(2.5f,5.2f,0.08f); glPopMatrix();
+    mat(0.13f,0.08f,0.05f, 0.28f,0.17f,0.09f, 0.16f,0.11f,0.07f,15);
+    glPushMatrix(); glTranslatef(bdX-2.0f,2.25f,bdZ-4.83f); box(2.4f,2.0f,0.08f); glPopMatrix();
+    glPushMatrix(); glTranslatef(bdX+2.0f,2.25f,bdZ-4.83f); box(2.4f,2.0f,0.08f); glPopMatrix();
     // Footboard
     useTex(TEX_WOOD_DARK);
-    mat(0.15f,0.09f,0.05f, 0.30f,0.19f,0.10f, 0.18f,0.13f,0.08f,16);
-    glPushMatrix(); glTranslatef(bdX,2.5f,bdZ+5.2f); box(8.0f,3.0f,0.38f,5.f,2.f); glPopMatrix();
+    mat(0.17f,0.10f,0.06f, 0.36f,0.23f,0.12f, 0.20f,0.14f,0.08f,16);
+    glPushMatrix(); glTranslatef(bdX,1.12f,bdZ+5.05f); box(8.1f,1.20f,0.34f,5.f,1.5f); glPopMatrix();
     // Bed legs (4 corners)
     noTex();
     mat(0.12f,0.07f,0.04f, 0.26f,0.16f,0.08f, 0.15f,0.10f,0.06f,18);
     float blx[4]={-3.5f,3.5f,-3.5f,3.5f}, blz[4]={-4.5f,-4.5f,4.5f,4.5f};
-    for(int i=0;i<4;i++) woodLeg(bdX+blx[i],0,bdZ+blz[i],0.20f,0.12f);
+    for(int i=0;i<4;i++) woodLeg(bdX+blx[i],0,bdZ+blz[i],0.22f,0.34f);
+    // Mid-span supports keep the centre from appearing to float.
+    for(int i=0;i<2;i++) woodLeg(bdX-1.8f+i*3.6f,0,bdZ-0.2f,0.18f,0.30f);
 }
 
 void drawBedsideTable(){
@@ -213,9 +225,8 @@ void drawBedsideTable(){
     }
     glEnd();
     glPopMatrix();
-    // Bulb glow
-    float br=lightOn?0.85f:0.0f, bg_=lightOn?0.78f:0.0f, bb=lightOn?0.52f:0.0f;
-    mat(br*0.4f,bg_*0.4f,bb*0.4f, 1.f,0.95f,0.75f, 1.f,1.f,0.9f,10,br,bg_,bb);
+    // Decorative bulb only; illumination is handled exclusively by GL_LIGHT0.
+    mat(0.18f,0.14f,0.08f, 0.95f,0.78f,0.45f, 1.f,0.85f,0.50f,10);
     glPushMatrix(); glTranslatef(btX,3.05f,btZ); sphere(0.10f,8,6); glPopMatrix();
     noEmit();
     // Items on table: book, glass
@@ -245,12 +256,12 @@ void drawDresser(){
     for(int i=0;i<5;i++){
         glPushMatrix(); glTranslatef(dx,0.42f+i*0.90f,dz+1.48f); box(0.60f,0.09f,0.07f); glPopMatrix();
     }
-    // Mirror on top of dresser
+    // Wall-mounted mirror kept close to the back wall so it does not jut into the scene.
     mat(0.25f,0.20f,0.14f, 0.45f,0.35f,0.24f, 0.30f,0.25f,0.18f,22);
-    glPushMatrix(); glTranslatef(dx,7.42f,dz+0.10f); box(2.8f,4.5f,0.18f); glPopMatrix();
+    glPushMatrix(); glTranslatef(dx,7.15f,-RD+0.22f); box(2.45f,3.85f,0.08f); glPopMatrix();
     // Mirror glass
-    mat(0.35f,0.40f,0.45f, 0.50f,0.55f,0.60f, 0.85f,0.88f,0.90f,120);
-    glPushMatrix(); glTranslatef(dx,7.42f,dz+0.20f); box(2.5f,4.1f,0.05f); glPopMatrix();
+    mat(0.35f,0.40f,0.45f, 0.58f,0.62f,0.66f, 0.90f,0.92f,0.94f,120);
+    glPushMatrix(); glTranslatef(dx,7.15f,-RD+0.27f); box(2.15f,3.55f,0.03f); glPopMatrix();
     // Perfume bottles on dresser
     mat(0.50f,0.35f,0.55f, 0.70f,0.50f,0.78f, 0.80f,0.75f,0.85f,80);
     glPushMatrix(); glTranslatef(dx-1.0f,5.42f,dz); cylinder(0.12f,0.50f,10); glPopMatrix();
@@ -287,8 +298,7 @@ void drawStudyDesk(){
     glTranslatef(0,0.74f,-0.55f);
     glRotatef(-10,1,0,0);
     box(2.35f,1.45f,0.10f);
-    float sr=lightOn?0.20f:0.05f, sg=lightOn?0.28f:0.08f, sb=lightOn?0.45f:0.15f;
-    mat(sr*0.4f,sg*0.4f,sb*0.4f, 0.30f,0.42f,0.68f, 0.55f,0.65f,0.85f,60, sr,sg,sb);
+    mat(0.08f,0.11f,0.18f, 0.30f,0.42f,0.68f, 0.55f,0.65f,0.85f,60);
     glPushMatrix(); glTranslatef(0,0,0.06f); box(2.05f,1.15f,0.035f); glPopMatrix();
     glPopMatrix();
     noEmit();
@@ -451,116 +461,154 @@ void drawDoor(){
 }
 
 void drawCeilingLight(){
-    // Elegant flush ceiling fixture
-    float lx=0, ly=RH-0.01f, lz=0;
+    // Shallow diffuser mounted under the ceiling so the light reads as facing downward.
+    float lx = LIGHTING.x;
+    float ly = RH - 0.03f;
+    float lz = LIGHTING.z;
 
-    // Ceiling rose
+    // Ceiling mount
     noTex();
-    mat(0.82f,0.80f,0.78f, 0.92f,0.90f,0.88f, 0.22f,0.22f,0.20f,20);
-    glPushMatrix(); glTranslatef(lx,ly,lz); glScalef(1,0.15f,1); sphere(0.90f,20,8); glPopMatrix();
+    mat(0.16f,0.16f,0.17f, 0.30f,0.30f,0.32f, 0.20f,0.20f,0.22f,28);
+    glPushMatrix(); glTranslatef(lx,ly,lz); cylinder(0.58f,0.08f,20); glPopMatrix();
 
-    // Pendant rod
-    mat(0.30f,0.28f,0.26f, 0.50f,0.48f,0.46f, 0.35f,0.33f,0.30f,40);
-    glPushMatrix(); glTranslatef(lx,ly-0.75f,lz); cylinder(0.04f,1.40f,10); glPopMatrix();
+    // Outer trim ring
+    mat(0.12f,0.12f,0.13f, 0.22f,0.22f,0.24f, 0.26f,0.26f,0.28f,40);
+    glPushMatrix(); glTranslatef(lx,ly-0.10f,lz); cylinder(1.08f,0.18f,24); glPopMatrix();
 
-    // Fixture body (lantern style)
-    mat(0.35f,0.30f,0.22f, 0.58f,0.52f,0.38f, 0.55f,0.50f,0.40f,60);
-    glPushMatrix(); glTranslatef(lx,ly-1.65f,lz); cylinder(0.22f,0.55f,16); glPopMatrix();
-
-    // Glass diffuser (bottom)
-    float gr=lightOn?0.96f:0.40f, gg=lightOn?0.92f:0.38f, gb=lightOn?0.78f:0.32f;
-    float em_r=lightOn?lightBrightness*0.90f:0.0f;
-    float em_g=lightOn?lightBrightness*0.84f:0.0f;
-    float em_b=lightOn?lightBrightness*0.65f:0.0f;
-    mat(gr*0.4f,gg*0.4f,gb*0.4f, gr,gg,gb, 1.f,1.f,0.95f,20, em_r,em_g,em_b);
-    glPushMatrix(); glTranslatef(lx,ly-1.95f,lz); glScalef(1,0.3f,1); sphere(0.55f,16,10); glPopMatrix();
+    // Warm diffuser on the underside.
+    float gr = lightOn ? LIGHTING.diffuserOnColor[0] : LIGHTING.diffuserOffColor[0];
+    float gg = lightOn ? LIGHTING.diffuserOnColor[1] : LIGHTING.diffuserOffColor[1];
+    float gb = lightOn ? LIGHTING.diffuserOnColor[2] : LIGHTING.diffuserOffColor[2];
+    mat(gr * LIGHTING.diffuserAmbientScale,
+        gg * LIGHTING.diffuserAmbientScale,
+        gb * LIGHTING.diffuserAmbientScale,
+        gr, gg, gb,
+        LIGHTING.diffuserSpecularColor[0],
+        LIGHTING.diffuserSpecularColor[1],
+        LIGHTING.diffuserSpecularColor[2],
+        LIGHTING.diffuserShininess);
+    glPushMatrix(); glTranslatef(lx,ly-0.18f,lz); glScalef(1.0f,0.22f,1.0f); sphere(0.92f,20,12); glPopMatrix();
     noEmit();
-
-    // Decorative chain links (simplified as small cylinders)
-    mat(0.30f,0.28f,0.24f, 0.50f,0.46f,0.38f, 0.50f,0.46f,0.40f,55);
-    for(int ci=0;ci<5;ci++){
-        glPushMatrix(); glTranslatef(lx,ly-0.20f-ci*0.22f,lz);
-        glRotatef(ci*45,0,1,0); cylinder(0.025f,0.14f,8); glPopMatrix();
-    }
 }
 
 // ════════════════════════════════════════════════════════════
 //  ROOM STRUCTURE
 // ════════════════════════════════════════════════════════════
+void tessellatedXZ(float x0,float x1,float z0,float z1,float y,
+                   float nx,float ny,float nz,int sx,int sz,float tu,float tv)
+{
+    for(int ix=0;ix<sx;ix++){
+        float xa=x0+(x1-x0)*(float)ix/sx;
+        float xb=x0+(x1-x0)*(float)(ix+1)/sx;
+        for(int iz=0;iz<sz;iz++){
+            float za=z0+(z1-z0)*(float)iz/sz;
+            float zb=z0+(z1-z0)*(float)(iz+1)/sz;
+            float u0=tu*(float)ix/sx, u1=tu*(float)(ix+1)/sx;
+            float v0=tv*(float)iz/sz, v1=tv*(float)(iz+1)/sz;
+            glBegin(GL_QUADS);
+            glNormal3f(nx,ny,nz);
+            if(ny>0.0f){
+                glTexCoord2f(u0,v1); glVertex3f(xa,y,zb);
+                glTexCoord2f(u1,v1); glVertex3f(xb,y,zb);
+                glTexCoord2f(u1,v0); glVertex3f(xb,y,za);
+                glTexCoord2f(u0,v0); glVertex3f(xa,y,za);
+            }else{
+                glTexCoord2f(u0,v0); glVertex3f(xa,y,za);
+                glTexCoord2f(u1,v0); glVertex3f(xb,y,za);
+                glTexCoord2f(u1,v1); glVertex3f(xb,y,zb);
+                glTexCoord2f(u0,v1); glVertex3f(xa,y,zb);
+            }
+            glEnd();
+        }
+    }
+}
+
+void tessellatedXY(float x0,float x1,float y0,float y1,float z,
+                   float nx,float ny,float nz,int sx,int sy,float tu,float tv)
+{
+    for(int ix=0;ix<sx;ix++){
+        float xa=x0+(x1-x0)*(float)ix/sx;
+        float xb=x0+(x1-x0)*(float)(ix+1)/sx;
+        for(int iy=0;iy<sy;iy++){
+            float ya=y0+(y1-y0)*(float)iy/sy;
+            float yb=y0+(y1-y0)*(float)(iy+1)/sy;
+            float u0=tu*(float)ix/sx, u1=tu*(float)(ix+1)/sx;
+            float v0=tv*(float)iy/sy, v1=tv*(float)(iy+1)/sy;
+            glBegin(GL_QUADS);
+            glNormal3f(nx,ny,nz);
+            if(nz>0.0f){
+                glTexCoord2f(u0,v0); glVertex3f(xa,ya,z);
+                glTexCoord2f(u1,v0); glVertex3f(xb,ya,z);
+                glTexCoord2f(u1,v1); glVertex3f(xb,yb,z);
+                glTexCoord2f(u0,v1); glVertex3f(xa,yb,z);
+            }else{
+                glTexCoord2f(u0,v0); glVertex3f(xa,ya,z);
+                glTexCoord2f(u0,v1); glVertex3f(xa,yb,z);
+                glTexCoord2f(u1,v1); glVertex3f(xb,yb,z);
+                glTexCoord2f(u1,v0); glVertex3f(xb,ya,z);
+            }
+            glEnd();
+        }
+    }
+}
+
+void tessellatedYZ(float y0,float y1,float z0,float z1,float x,
+                   float nx,float ny,float nz,int sy,int sz,float tu,float tv)
+{
+    for(int iz=0;iz<sz;iz++){
+        float za=z0+(z1-z0)*(float)iz/sz;
+        float zb=z0+(z1-z0)*(float)(iz+1)/sz;
+        for(int iy=0;iy<sy;iy++){
+            float ya=y0+(y1-y0)*(float)iy/sy;
+            float yb=y0+(y1-y0)*(float)(iy+1)/sy;
+            float u0=tu*(float)iz/sz, u1=tu*(float)(iz+1)/sz;
+            float v0=tv*(float)iy/sy, v1=tv*(float)(iy+1)/sy;
+            glBegin(GL_QUADS);
+            glNormal3f(nx,ny,nz);
+            if(nx>0.0f){
+                glTexCoord2f(u0,v0); glVertex3f(x,ya,za);
+                glTexCoord2f(u0,v1); glVertex3f(x,yb,za);
+                glTexCoord2f(u1,v1); glVertex3f(x,yb,zb);
+                glTexCoord2f(u1,v0); glVertex3f(x,ya,zb);
+            }else{
+                glTexCoord2f(u0,v0); glVertex3f(x,ya,za);
+                glTexCoord2f(u1,v0); glVertex3f(x,ya,zb);
+                glTexCoord2f(u1,v1); glVertex3f(x,yb,zb);
+                glTexCoord2f(u0,v1); glVertex3f(x,yb,za);
+            }
+            glEnd();
+        }
+    }
+}
+
 void drawRoom(){
     // ── FLOOR ──
     useTex(TEX_FLOOR);
     mat(0.35f,0.22f,0.10f, 0.62f,0.40f,0.18f, 0.18f,0.13f,0.07f,22);
-    glBegin(GL_QUADS);
-    glNormal3f(0,1,0);
-    glTexCoord2f(0,0);    glVertex3f(-RW,0, RD);
-    glTexCoord2f(10,0);   glVertex3f( RW,0, RD);
-    glTexCoord2f(10,10);  glVertex3f( RW,0,-RD);
-    glTexCoord2f(0,10);   glVertex3f(-RW,0,-RD);
-    glEnd();
+    tessellatedXZ(-RW,RW,-RD,RD,0.0f, 0,1,0, 20,20, 4,4);
 
     // ── CEILING ──
     useTex(TEX_CEILING);
     mat(0.45f,0.44f,0.42f, 0.82f,0.80f,0.78f, 0.08f,0.08f,0.07f,5);
-    glBegin(GL_QUADS);
-    glNormal3f(0,-1,0);
-    glTexCoord2f(0,0);    glVertex3f(-RW,RH,-RD);
-    glTexCoord2f(10,0);   glVertex3f( RW,RH,-RD);
-    glTexCoord2f(10,10);  glVertex3f( RW,RH, RD);
-    glTexCoord2f(0,10);   glVertex3f(-RW,RH, RD);
-    glEnd();
+    tessellatedXZ(-RW,RW,-RD,RD,RH, 0,-1,0, 20,20, 10,10);
 
     // ── WALLS ──
+    // Use the same plaster texture on every wall so the room reads consistently.
     useTex(TEX_WALL);
+    mat(0.82f,0.80f,0.76f, 1.0f,0.99f,0.95f, 0.16f,0.15f,0.14f,10);
     // Back wall (-Z)
-    mat(0.42f,0.32f,0.28f, 0.88f,0.74f,0.70f, 0.10f,0.08f,0.07f,6);
-    glBegin(GL_QUADS);
-    glNormal3f(0,0,1);
-    glTexCoord2f(0,0);   glVertex3f( RW,0,-RD);
-    glTexCoord2f(8,0);   glVertex3f(-RW,0,-RD);
-    glTexCoord2f(8,4);   glVertex3f(-RW,RH,-RD);
-    glTexCoord2f(0,4);   glVertex3f( RW,RH,-RD);
-    glEnd();
-    // Front wall (+Z) — has door cutout (draw two panels)
-    glNormal3f(0,0,-1);
+    tessellatedXY(-RW,RW,0,RH,-RD, 0,0,1, 20,20, 2.4f,1.0f);
+    // Front wall (+Z) keeps the door cutout but now uses the same wall texture.
     // Left panel (door left side)
-    glBegin(GL_QUADS);
-    glTexCoord2f(0,0); glVertex3f(-RW,0,RD);
-    glTexCoord2f(2,0); glVertex3f(-RW+1.0f,0,RD);
-    glTexCoord2f(2,4); glVertex3f(-RW+1.0f,RH,RD);
-    glTexCoord2f(0,4); glVertex3f(-RW,RH,RD);
-    glEnd();
+    tessellatedXY(-RW,-RW+1.0f,0,RH,RD, 0,0,-1, 4,20, 0.12f,1.0f);
     // Door left section
-    glBegin(GL_QUADS);
-    glTexCoord2f(0,0); glVertex3f(-RW+1.0f,0,RD);
-    glTexCoord2f(2,0); glVertex3f(-RW+5.0f,0,RD);
-    glTexCoord2f(2,4); glVertex3f(-RW+5.0f,RH,RD);
-    glTexCoord2f(0,4); glVertex3f(-RW+1.0f,RH,RD);
-    glEnd();
+    tessellatedXY(-RW+1.0f,-RW+5.0f,0,RH,RD, 0,0,-1, 8,20, 0.48f,1.0f);
     // Right of door
-    glBegin(GL_QUADS);
-    glTexCoord2f(0,0); glVertex3f(-RW+5.0f,0,RD);
-    glTexCoord2f(6,0); glVertex3f( RW,0,RD);
-    glTexCoord2f(6,4); glVertex3f( RW,RH,RD);
-    glTexCoord2f(0,4); glVertex3f(-RW+5.0f,RH,RD);
-    glEnd();
+    tessellatedXY(-RW+5.0f,RW,0,RH,RD, 0,0,-1, 16,20, 1.0f,1.0f);
     // Left wall (-X)
-    mat(0.40f,0.30f,0.26f, 0.85f,0.72f,0.68f, 0.09f,0.07f,0.06f,5);
-    glBegin(GL_QUADS);
-    glNormal3f(1,0,0);
-    glTexCoord2f(0,0);  glVertex3f(-RW,0,-RD);
-    glTexCoord2f(8,0);  glVertex3f(-RW,0, RD);
-    glTexCoord2f(8,4);  glVertex3f(-RW,RH, RD);
-    glTexCoord2f(0,4);  glVertex3f(-RW,RH,-RD);
-    glEnd();
+    tessellatedYZ(0,RH,-RD,RD,-RW, 1,0,0, 20,20, 2.4f,1.0f);
     // Right wall (+X)
-    glBegin(GL_QUADS);
-    glNormal3f(-1,0,0);
-    glTexCoord2f(0,0);  glVertex3f(RW,0, RD);
-    glTexCoord2f(8,0);  glVertex3f(RW,0,-RD);
-    glTexCoord2f(8,4);  glVertex3f(RW,RH,-RD);
-    glTexCoord2f(0,4);  glVertex3f(RW,RH, RD);
-    glEnd();
+    tessellatedYZ(0,RH,-RD,RD,RW, -1,0,0, 20,20, 2.4f,1.0f);
 
     // ── SKIRTING BOARDS (white trim) ──
     noTex();
@@ -579,16 +627,6 @@ void drawRoom(){
     glPushMatrix(); glTranslatef(-RW+cv/2,RH-cv/2,0); glRotatef(45,0,0,1); box(cv,cv,RD*2); glPopMatrix();
     glPushMatrix(); glTranslatef( RW-cv/2,RH-cv/2,0); glRotatef(-45,0,0,1); box(cv,cv,RD*2); glPopMatrix();
 
-    // ── RUG (centre of room) ──
-    useTex(TEX_RUG);
-    mat(0.30f,0.08f,0.08f, 0.55f,0.14f,0.14f, 0.08f,0.04f,0.04f,4);
-    glBegin(GL_QUADS);
-    glNormal3f(0,1,0);
-    glTexCoord2f(0,0); glVertex3f(-7.0f,0.005f,-3.0f);
-    glTexCoord2f(1,0); glVertex3f( 7.0f,0.005f,-3.0f);
-    glTexCoord2f(1,1); glVertex3f( 7.0f,0.005f,10.0f);
-    glTexCoord2f(0,1); glVertex3f(-7.0f,0.005f,10.0f);
-    glEnd();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -598,83 +636,54 @@ void drawPaintings(){
     // Mona Lisa on back wall (centre-right)
     drawPainting(3.0f,7.0f,-RD+0.15f, 3.5f,5.0f, TEX_PAINTING1);
 
-    // Starry Night on back wall (left side)
+    // City view on back wall (left side)
     drawPainting(-9.0f,7.8f,-RD+0.15f, 5.5f,3.8f, TEX_PAINTING2);
-
-    // Small abstract on left wall
-    // (Draw a simple coloured panel as 3rd painting)
-    glPushMatrix();
-    glTranslatef(-RW+0.15f,8.0f,5.0f);
-    glRotatef(90,0,1,0);
-    // frame
-    noTex();
-    mat(0.28f,0.20f,0.08f, 0.50f,0.38f,0.10f, 0.80f,0.72f,0.40f,75);
-    box(3.2f,3.2f,0.10f);
-    // abstract canvas
-    mat(0.60f,0.32f,0.18f, 0.82f,0.48f,0.28f, 0.20f,0.12f,0.08f,8);
-    glPushMatrix(); glTranslatef(0,0,0.06f); box(2.8f,2.8f,0.06f); glPopMatrix();
-    // abstract colour stripes
-    float acol[][3]={{0.9f,0.3f,0.1f},{0.2f,0.4f,0.8f},{0.9f,0.8f,0.1f}};
-    for(int i=0;i<3;i++){
-        mat(acol[i][0]*0.4f,acol[i][1]*0.4f,acol[i][2]*0.4f,
-            acol[i][0],acol[i][1],acol[i][2],0.2f,0.2f,0.2f,10);
-        glPushMatrix(); glTranslatef(-0.9f+i*0.9f,0,0.08f); box(0.70f,2.5f,0.05f); glPopMatrix();
-    }
-    glPopMatrix();
 }
 
 // ════════════════════════════════════════════════════════════
 //  LIGHTING SETUP  (called every frame so brightness can animate)
 // ════════════════════════════════════════════════════════════
 void setupLighting(){
-    float B = lightOn ? lightBrightness : 0.0f;
-    float dim = lightOn ? 0.08f : 0.02f; // ambient when off
-
-    // Global ambient (moonlight when off)
-    GLfloat gA[]={dim*0.6f, dim*0.55f, dim*0.8f, 1.f};
+    float ceilingPower = lightOn ? lightBrightness : 0.0f;
+    float lightIntensity = ceilingPower * LIGHTING.intensityScale;
+    GLfloat gA[]={
+        LIGHTING.globalAmbient * ceilingPower,
+        LIGHTING.globalAmbient * ceilingPower,
+        LIGHTING.globalAmbient * ceilingPower,
+        1.0f
+    };
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, gA);
 
-    // LIGHT 0 — main ceiling fixture (warm white)
+    // Main warm ceiling light. Keep it strong enough to light the whole room
+    // without the auxiliary corner fills.
     glEnable(GL_LIGHT0);
-    GLfloat lp0[]={0,RH-1.8f,0,1.f};
-    GLfloat ld0[]={B*1.0f, B*0.93f, B*0.78f, 1.f};
-    GLfloat ls0[]={B*0.85f, B*0.80f, B*0.65f, 1.f};
-    GLfloat la0[]={B*0.08f, B*0.06f, B*0.04f, 1.f};
+    GLfloat lp0[]={LIGHTING.x, RH - LIGHTING.yOffsetFromCeiling, LIGHTING.z, 1.0f};
+    GLfloat ld0[]={
+        lightIntensity * LIGHTING.diffuseColor[0],
+        lightIntensity * LIGHTING.diffuseColor[1],
+        lightIntensity * LIGHTING.diffuseColor[2],
+        1.0f
+    };
+    GLfloat ls0[]={
+        lightIntensity * LIGHTING.specularColor[0],
+        lightIntensity * LIGHTING.specularColor[1],
+        lightIntensity * LIGHTING.specularColor[2],
+        1.0f
+    };
+    GLfloat la0[]={
+        ceilingPower * LIGHTING.localAmbientColor[0],
+        ceilingPower * LIGHTING.localAmbientColor[1],
+        ceilingPower * LIGHTING.localAmbientColor[2],
+        1.0f
+    };
     glLightfv(GL_LIGHT0,GL_POSITION,lp0);
     glLightfv(GL_LIGHT0,GL_DIFFUSE, ld0);
     glLightfv(GL_LIGHT0,GL_SPECULAR,ls0);
     glLightfv(GL_LIGHT0,GL_AMBIENT, la0);
-    glLightf(GL_LIGHT0,GL_CONSTANT_ATTENUATION,  0.20f);
-    glLightf(GL_LIGHT0,GL_LINEAR_ATTENUATION,    0.005f);
-    glLightf(GL_LIGHT0,GL_QUADRATIC_ATTENUATION, 0.0001f);
+    glLightf(GL_LIGHT0,GL_CONSTANT_ATTENUATION,  LIGHTING.constantAttenuation);
+    glLightf(GL_LIGHT0,GL_LINEAR_ATTENUATION,    LIGHTING.linearAttenuation);
+    glLightf(GL_LIGHT0,GL_QUADRATIC_ATTENUATION, LIGHTING.quadraticAttenuation);
 
-    // LIGHT 1 — bedside lamp warm accent (always on, but dim if no power)
-    glEnable(GL_LIGHT1);
-    float bL=lightOn?0.85f:0.0f;
-    GLfloat lp1[]={-10.5f,3.1f,-RD+2.5f,1.f};
-    GLfloat ld1[]={bL*0.90f, bL*0.72f, bL*0.36f, 1.f};
-    GLfloat ls1[]={bL*0.40f, bL*0.32f, bL*0.14f, 1.f};
-    GLfloat la1[]={bL*0.04f, bL*0.03f, bL*0.01f, 1.f};
-    glLightfv(GL_LIGHT1,GL_POSITION,lp1);
-    glLightfv(GL_LIGHT1,GL_DIFFUSE, ld1);
-    glLightfv(GL_LIGHT1,GL_SPECULAR,ls1);
-    glLightfv(GL_LIGHT1,GL_AMBIENT, la1);
-    glLightf(GL_LIGHT1,GL_CONSTANT_ATTENUATION,  0.50f);
-    glLightf(GL_LIGHT1,GL_LINEAR_ATTENUATION,    0.018f);
-    glLightf(GL_LIGHT1,GL_QUADRATIC_ATTENUATION, 0.0006f);
-
-    // LIGHT 2 — monitor/screen blue fill (right area)
-    glEnable(GL_LIGHT2);
-    float mL=lightOn?0.40f:0.05f;
-    GLfloat lp2[]={RW-2.5f, 4.8f, 2.0f, 1.f};
-    GLfloat ld2[]={mL*0.25f, mL*0.38f, mL*0.62f, 1.f};
-    GLfloat ls2[]={mL*0.10f, mL*0.15f, mL*0.25f, 1.f};
-    GLfloat la2[]={0.0f,0.0f,0.0f,1.f};
-    glLightfv(GL_LIGHT2,GL_POSITION,lp2);
-    glLightfv(GL_LIGHT2,GL_DIFFUSE, ld2);
-    glLightfv(GL_LIGHT2,GL_SPECULAR,ls2);
-    glLightfv(GL_LIGHT2,GL_AMBIENT, la2);
-    glLightf(GL_LIGHT2,GL_CONSTANT_ATTENUATION,  0.80f);
-    glLightf(GL_LIGHT2,GL_LINEAR_ATTENUATION,    0.040f);
-    glLightf(GL_LIGHT2,GL_QUADRATIC_ATTENUATION, 0.0010f);
+    glDisable(GL_LIGHT1);
+    glDisable(GL_LIGHT2);
 }

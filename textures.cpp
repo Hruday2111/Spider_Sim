@@ -2,12 +2,14 @@
 //  PROCEDURAL TEXTURE GENERATION
 //  We create OpenGL 1D/2D textures from raw pixel data at init.
 // ════════════════════════════════════════════════════════════
+#include <jpeglib.h>
+#include <png.h>
+
 enum TexID {
-    TEX_FLOOR=0, TEX_WALL, TEX_CEILING, TEX_WOOD_DARK,
+    TEX_FLOOR=0, TEX_WALL, TEX_WALL_PLAIN, TEX_CEILING, TEX_WOOD_DARK,
     TEX_WOOD_LIGHT, TEX_FABRIC_BED, TEX_SPIDER_SKIN,
     TEX_PAINTING1,  // Mona Lisa style
     TEX_PAINTING2,  // Starry Night style
-    TEX_RUG,
     TEX_COUNT
 };
 GLuint textures[TEX_COUNT];
@@ -43,10 +45,10 @@ static void genFloorTex(int W,int H,unsigned char* p){
     }
 }
 static void genWallTex(int W,int H,unsigned char* p){
-    // warm cream/rose with subtle plaster noise
+    // light warm off-white plaster with subtle noise
     for(int y=0;y<H;y++) for(int x=0;x<W;x++){
-        float n=smoothNoise(x*0.05f,y*0.05f)*0.06f;
-        float r=0.88f+n, g=0.76f+n*0.6f, b=0.72f+n*0.4f;
+        float n=smoothNoise(x*0.05f,y*0.05f)*0.035f;
+        float r=0.96f+n, g=0.94f+n*0.7f, b=0.88f+n*0.5f;
         r=r>1?1:r; g=g>1?1:g; b=b>1?1:b;
         p[(y*W+x)*3+0]=(unsigned char)(r*255);
         p[(y*W+x)*3+1]=(unsigned char)(g*255);
@@ -171,32 +173,6 @@ static void genStarryNight(int W,int H,unsigned char* p){
         p[(y*W+x)*3+2]=(unsigned char)(b*255);
     }
 }
-static void genRugTex(int W,int H,unsigned char* p){
-    // Persian rug pattern with medallion
-    for(int y=0;y<H;y++) for(int x=0;x<W;x++){
-        float fx=(float)x/W-0.5f, fy=(float)y/H-0.5f;
-        // base burgundy
-        float r=0.48f,g=0.12f,b=0.12f;
-        // border pattern
-        float bx=fabsf(fx), by=fabsf(fy);
-        if(bx>0.42f||by>0.42f){ r=0.18f;g=0.12f;b=0.06f; }
-        if((bx>0.38f&&bx<0.42f)||(by>0.38f&&by<0.42f)){ r=0.72f;g=0.62f;b=0.18f; }
-        // medallion
-        float d=sqrtf(fx*fx+fy*fy);
-        if(d<0.12f){ r=0.70f;g=0.18f;b=0.10f; }
-        if(d>0.09f&&d<0.12f){ r=0.72f;g=0.60f;b=0.15f; }
-        // geometric diamonds
-        float diam=fabsf(fx)+fabsf(fy);
-        if(diam>0.25f&&diam<0.27f){ r=0.72f;g=0.58f;b=0.14f; }
-        float n=smoothNoise(x*0.3f,y*0.3f)*0.05f;
-        r+=n;g+=n*0.5f;b+=n*0.3f;
-        r=r>1?1:r;g=g>1?1:g;b=b>1?1:b;
-        p[(y*W+x)*3+0]=(unsigned char)(r*255);
-        p[(y*W+x)*3+1]=(unsigned char)(g*255);
-        p[(y*W+x)*3+2]=(unsigned char)(b*255);
-    }
-}
-
 void buildTexture(GLuint id,int W,int H,void(*gen)(int,int,unsigned char*)){
     unsigned char* buf=new unsigned char[W*H*3];
     gen(W,H,buf);
@@ -210,18 +186,146 @@ void buildTexture(GLuint id,int W,int H,void(*gen)(int,int,unsigned char*)){
     delete[] buf;
 }
 
+static void uploadTexture2D(GLuint id,int W,int H,GLenum format,const unsigned char* data){
+    glBindTexture(GL_TEXTURE_2D,id);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+    // Imported images are tightly packed; force byte alignment so GLU does not
+    // misread rows whose stride is not a multiple of 4.
+    glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+    gluBuild2DMipmaps(GL_TEXTURE_2D,format,W,H,format,GL_UNSIGNED_BYTE,data);
+    glPixelStorei(GL_UNPACK_ALIGNMENT,4);
+}
+
+bool buildJPEGTexture(GLuint id,const char* path){
+    FILE* f=fopen(path,"rb");
+    if(!f) return false;
+
+    jpeg_decompress_struct cinfo;
+    jpeg_error_mgr jerr;
+    cinfo.err=jpeg_std_error(&jerr);
+    jpeg_create_decompress(&cinfo);
+    jpeg_stdio_src(&cinfo,f);
+    jpeg_read_header(&cinfo,TRUE);
+    jpeg_start_decompress(&cinfo);
+
+    int W=(int)cinfo.output_width;
+    int H=(int)cinfo.output_height;
+    int C=(int)cinfo.output_components;
+    unsigned char* raw=new unsigned char[W*H*C];
+    while(cinfo.output_scanline<cinfo.output_height){
+        unsigned char* row=&raw[cinfo.output_scanline*W*C];
+        jpeg_read_scanlines(&cinfo,&row,1);
+    }
+    jpeg_finish_decompress(&cinfo);
+    jpeg_destroy_decompress(&cinfo);
+    fclose(f);
+
+    unsigned char* rgb=new unsigned char[W*H*3];
+    for(int y=0;y<H;y++){
+        int srcY=H-1-y;
+        for(int x=0;x<W;x++){
+            int si=(srcY*W+x)*C;
+            int di=(y*W+x)*3;
+            unsigned char r=raw[si+0];
+            unsigned char g=(C>1)?raw[si+1]:r;
+            unsigned char b=(C>2)?raw[si+2]:r;
+            rgb[di+0]=r; rgb[di+1]=g; rgb[di+2]=b;
+        }
+    }
+    delete[] raw;
+
+    uploadTexture2D(id,W,H,GL_RGB,rgb);
+    delete[] rgb;
+    return true;
+}
+
+bool buildPNGTexture(GLuint id,const char* path){
+    FILE* f=fopen(path,"rb");
+    if(!f) return false;
+
+    png_byte header[8];
+    if(fread(header,1,8,f)!=8 || png_sig_cmp(header,0,8)){
+        fclose(f);
+        return false;
+    }
+
+    png_structp png=png_create_read_struct(PNG_LIBPNG_VER_STRING,nullptr,nullptr,nullptr);
+    if(!png){
+        fclose(f);
+        return false;
+    }
+    png_infop info=png_create_info_struct(png);
+    if(!info){
+        png_destroy_read_struct(&png,nullptr,nullptr);
+        fclose(f);
+        return false;
+    }
+    if(setjmp(png_jmpbuf(png))){
+        png_destroy_read_struct(&png,&info,nullptr);
+        fclose(f);
+        return false;
+    }
+
+    png_init_io(png,f);
+    png_set_sig_bytes(png,8);
+    png_read_info(png,info);
+
+    png_uint_32 W=png_get_image_width(png,info);
+    png_uint_32 H=png_get_image_height(png,info);
+    png_byte colorType=png_get_color_type(png,info);
+    png_byte bitDepth=png_get_bit_depth(png,info);
+
+    if(bitDepth==16) png_set_strip_16(png);
+    if(colorType==PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
+    if(colorType==PNG_COLOR_TYPE_GRAY && bitDepth<8) png_set_expand_gray_1_2_4_to_8(png);
+    if(png_get_valid(png,info,PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
+    if(colorType==PNG_COLOR_TYPE_GRAY || colorType==PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
+
+    png_read_update_info(png,info);
+    const png_size_t rowBytes=png_get_rowbytes(png,info);
+    const int channels=(int)png_get_channels(png,info);
+
+    unsigned char* raw=new unsigned char[rowBytes*H];
+    png_bytep* rows=new png_bytep[H];
+    for(png_uint_32 y=0;y<H;y++) rows[y]=raw+y*rowBytes;
+    png_read_image(png,rows);
+    png_read_end(png,nullptr);
+    delete[] rows;
+    png_destroy_read_struct(&png,&info,nullptr);
+    fclose(f);
+
+    unsigned char* flipped=new unsigned char[rowBytes*H];
+    for(png_uint_32 y=0;y<H;y++)
+        memcpy(flipped+y*rowBytes,raw+(H-1-y)*rowBytes,rowBytes);
+    delete[] raw;
+
+    uploadTexture2D(id,(int)W,(int)H,channels==4?GL_RGBA:GL_RGB,flipped);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+    delete[] flipped;
+    return true;
+}
+
 void initTextures(){
     glGenTextures(TEX_COUNT,textures);
-    buildTexture(textures[TEX_FLOOR],    256,256, genFloorTex);
-    buildTexture(textures[TEX_WALL],     256,256, genWallTex);
+    if(!buildJPEGTexture(textures[TEX_FLOOR],"Textures/plank_flooring_04_diff_1k.jpg"))
+        buildTexture(textures[TEX_FLOOR],256,256,genFloorTex);
+    if(!buildJPEGTexture(textures[TEX_WALL],"Textures/painted_plaster_wall_diff_1k.jpg"))
+        buildTexture(textures[TEX_WALL],256,256,genWallTex);
+    if(!buildPNGTexture(textures[TEX_WALL_PLAIN],"Textures/Unique_Wall.png"))
+        buildTexture(textures[TEX_WALL_PLAIN],256,256, genWallTex);
     buildTexture(textures[TEX_CEILING],  256,256, genCeilingTex);
     buildTexture(textures[TEX_WOOD_DARK],128,128, genDarkWoodTex);
     buildTexture(textures[TEX_WOOD_LIGHT],128,128,genLightWoodTex);
     buildTexture(textures[TEX_FABRIC_BED],128,128,genFabricTex);
     buildTexture(textures[TEX_SPIDER_SKIN],64,64, genSpiderSkinTex);
-    buildTexture(textures[TEX_PAINTING1],128,192, genMonaLisa);
-    buildTexture(textures[TEX_PAINTING2],192,128, genStarryNight);
-    buildTexture(textures[TEX_RUG],      256,256, genRugTex);
+    if(!buildJPEGTexture(textures[TEX_PAINTING1],"Images/Mona_Lisa.jpg"))
+        buildTexture(textures[TEX_PAINTING1],128,192, genMonaLisa);
+    if(!buildJPEGTexture(textures[TEX_PAINTING2],"Images/City_View.jpg"))
+        buildTexture(textures[TEX_PAINTING2],192,128, genStarryNight);
 }
 
 void useTex(int id){ glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,textures[id]); }

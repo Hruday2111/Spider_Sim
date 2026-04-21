@@ -80,23 +80,7 @@ void drawReferenceSpiderLeg(int legIndex,int side,int pairIndex,float){
     glPopMatrix();
 }
 
-void drawSpider(){
-    float stride = fabsf(spMoveVel)/MOVE_SPEED;
-    float bob = sinf(walkPh*2.f)*0.035f*stride;
-    Vec3 right,up,forward;
-    surfaceBasis(spSurface,spYaw,right,up,forward);
-
-    glPushMatrix();
-    Vec3 pos=vadd(v3(spX,spY,spZ),vscale(up,bob));
-    GLfloat m[16]={
-        right.x, right.y, right.z, 0.f,
-        up.x, up.y, up.z, 0.f,
-        -forward.x, -forward.y, -forward.z, 0.f,
-        pos.x, pos.y, pos.z, 1.f
-    };
-    glMultMatrixf(m);
-    glScalef(0.80f,0.80f,0.80f);
-
+void drawSpiderModel(){
     spiderBodyMat(0.22f);
     glPushMatrix(); glTranslatef(0,0.55f,0.72f); glScalef(0.82f,0.72f,1.08f); sphere(0.54f,22,16); glPopMatrix();
     spiderBodyMat(0.32f);
@@ -164,7 +148,25 @@ void drawSpider(){
         drawLegJoint(x2,y2,z2,0.018f);
     }
     noTex();
+}
 
+void drawSpider(){
+    float stride = fabsf(spMoveVel)/MOVE_SPEED;
+    float bob = sinf(walkPh*2.f)*0.035f*stride;
+    Vec3 right,up,forward;
+    surfaceBasis(spSurface,spYaw,right,up,forward);
+
+    glPushMatrix();
+    Vec3 pos=vadd(v3(spX,spY,spZ),vscale(up,bob));
+    GLfloat m[16]={
+        right.x, right.y, right.z, 0.f,
+        up.x, up.y, up.z, 0.f,
+        -forward.x, -forward.y, -forward.z, 0.f,
+        pos.x, pos.y, pos.z, 1.f
+    };
+    glMultMatrixf(m);
+    glScalef(0.80f,0.80f,0.80f);
+    drawSpiderModel();
     glPopMatrix();
 }
 
@@ -175,51 +177,48 @@ void drawSpider(){
 void drawSpiderShadow(){
     if(!lightOn) return;
     if(spSurface!=SURF_FLOOR && spSurface!=SURF_OBJECT_TOP) return;
-    // Shadow matrix projecting from light position onto y=0 plane
-    // Light at (0, RH-0.5, 0)
-    float lx=0,ly=RH-0.5f,lz=0;
-    // Projection matrix for planar shadow (ground plane y=0, normal (0,1,0))
-    // M = (L·N - l_y) * I - L * N^T  where N=(0,1,0), L=(lx,ly,lz)
-    float dot = ly; // L·N = ly (since N=(0,1,0))
-    float sm[16]={
-        dot-lx*0,  -ly*0,   -lz*0,  0,
-        -lx*1,   dot-ly*1, -lz*1,  0,
-        -lx*0,   -ly*0,   dot-lz*0,0,
-        -lx*0,   -ly*0,   -lz*0,  dot
+    float stride = fabsf(spMoveVel)/MOVE_SPEED;
+    float bob = sinf(walkPh*2.f)*0.035f*stride;
+    Vec3 right,up,forward;
+    surfaceBasis(spSurface,spYaw,right,up,forward);
+
+    const float lx = LIGHTING.x;
+    const float ly = RH - LIGHTING.yOffsetFromCeiling;
+    const float lz = LIGHTING.z;
+
+    // Planar projection onto the floor plane y=0 from the ceiling light.
+    const float shadow[16]={
+        ly,  0.f, 0.f, 0.f,
+        -lx, 0.f, -lz, -1.f,
+        0.f, 0.f, ly, 0.f,
+        0.f, 0.f, 0.f, ly
     };
-    // OpenGL column-major
-    float shadow[16]={
-        dot,   0,   0, 0,
-       -lx,   0,  -lz, 0,
-        0,   0,   dot, 0,
-        0,   0,   0,  dot
+
+    Vec3 pos=vadd(v3(spX,spY,spZ),vscale(up,bob));
+    GLfloat spiderMatrix[16]={
+        right.x, right.y, right.z, 0.f,
+        up.x, up.y, up.z, 0.f,
+        -forward.x, -forward.y, -forward.z, 0.f,
+        pos.x, pos.y, pos.z, 1.f
     };
-    // Proper shadow matrix:
-    // L=(lx,ly,lz,1) point light, plane y=0 → n=(0,1,0,0)
-    float nd = ly; // n·L
-    shadow[0]=nd-lx*0;  shadow[4]=-lx*1;   shadow[8]=-lx*0;  shadow[12]=-lx*0;
-    shadow[1]=-ly*0;    shadow[5]=nd-ly*1; shadow[9]=-ly*0;  shadow[13]=-ly*0;
-    shadow[2]=-lz*0;    shadow[6]=-lz*1;   shadow[10]=nd-lz*0;shadow[14]=-lz*0;
-    shadow[3]=0;        shadow[7]=0;        shadow[11]=0;      shadow[15]=nd;
 
     glDisable(GL_LIGHTING);
     glDisable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
 
     glColor4f(0.05f,0.04f,0.03f, lightBrightness*0.55f);
     glPushMatrix();
       glTranslatef(0,0.005f,0); // tiny offset above floor to avoid z-fight
       glMultMatrixf(shadow);
-      glTranslatef(spX,0,spZ);
-      glRotatef(spYaw,0,1,0);
-      // Draw simplified shadow silhouette (just body + leg stubs)
-      glScalef(1.44f,1.44f,1.44f);
-      glutSolidSphere(0.45f,12,8);
-      glScalef(1.5f,0.1f,1.0f);
-      glutSolidSphere(0.52f,12,8);
+      glMultMatrixf(spiderMatrix);
+      glScalef(0.80f,0.80f,0.80f);
+      drawSpiderModel();
     glPopMatrix();
 
+    glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
+    glEnable(GL_TEXTURE_2D);
     glEnable(GL_LIGHTING);
 }

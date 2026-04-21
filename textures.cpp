@@ -6,7 +6,7 @@
 #include <png.h>
 
 enum TexID {
-    TEX_FLOOR=0, TEX_WALL, TEX_WALL_PLAIN, TEX_CEILING, TEX_WOOD_DARK,
+    TEX_FLOOR=0, TEX_WALL, TEX_CEILING, TEX_WOOD_DARK,
     TEX_WOOD_LIGHT, TEX_FABRIC_BED, TEX_SPIDER_SKIN,
     TEX_PAINTING1,  // Mona Lisa style
     TEX_PAINTING2,  // Starry Night style
@@ -315,13 +315,12 @@ void initTextures(){
         buildTexture(textures[TEX_FLOOR],256,256,genFloorTex);
     if(!buildJPEGTexture(textures[TEX_WALL],"Textures/painted_plaster_wall_diff_1k.jpg"))
         buildTexture(textures[TEX_WALL],256,256,genWallTex);
-    if(!buildPNGTexture(textures[TEX_WALL_PLAIN],"Textures/Unique_Wall.png"))
-        buildTexture(textures[TEX_WALL_PLAIN],256,256, genWallTex);
     buildTexture(textures[TEX_CEILING],  256,256, genCeilingTex);
     buildTexture(textures[TEX_WOOD_DARK],128,128, genDarkWoodTex);
     buildTexture(textures[TEX_WOOD_LIGHT],128,128,genLightWoodTex);
     buildTexture(textures[TEX_FABRIC_BED],128,128,genFabricTex);
-    buildTexture(textures[TEX_SPIDER_SKIN],64,64, genSpiderSkinTex);
+    if(!buildPNGTexture(textures[TEX_SPIDER_SKIN],"Textures/spider_texture.png"))
+        buildTexture(textures[TEX_SPIDER_SKIN],64,64, genSpiderSkinTex);
     if(!buildJPEGTexture(textures[TEX_PAINTING1],"Images/Mona_Lisa.jpg"))
         buildTexture(textures[TEX_PAINTING1],128,192, genMonaLisa);
     if(!buildJPEGTexture(textures[TEX_PAINTING2],"Images/City_View.jpg"))

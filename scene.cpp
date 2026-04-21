@@ -2,6 +2,25 @@
 //  FURNITURE  HELPERS
 // ════════════════════════════════════════════════════════════
 
+// Layout knobs for the major room pieces. If you want to reposition large
+// scene objects later, start by editing these anchors rather than hunting for
+// scattered literals inside each draw function.
+const float WARDROBE_X = RW - 3.0f,   WARDROBE_Z = -RD + 1.8f;
+const float BOOKSHELF_X = -RW + 2.5f, BOOKSHELF_Z = -RD + 1.5f;
+const float BED_X = -4.5f,            BED_Z = -RD + 5.5f;
+const float BEDSIDE_X = -10.5f,       BEDSIDE_Z = -RD + 2.5f;
+const float DRESSER_X = 8.0f,         DRESSER_Z = -RD + 1.5f;
+const float DESK_X = RW - 2.0f,       DESK_Z = 2.0f;
+const float CLOCK_X = -RW + 0.12f,    CLOCK_Y = 6.0f, CLOCK_Z = -4.0f;
+const float ARMCHAIR_X = -9.0f,       ARMCHAIR_Z = 5.0f;
+const float DOOR_X = -RW + 3.0f,      DOOR_Z = RD - 0.1f;
+
+// Wall decor anchors. These are the first numbers to tweak when moving
+// paintings or the switch plate.
+const float MONA_LISA_X = 3.0f,       MONA_LISA_Y = 7.0f,  MONA_LISA_Z = -RD + 0.15f;
+const float CITY_VIEW_X = -9.0f,      CITY_VIEW_Y = 7.8f,  CITY_VIEW_Z = -RD + 0.15f;
+const float SWITCH_X = -RW + 0.12f,   SWITCH_Y = 4.0f,     SWITCH_Z = -8.0f;
+
 // Textured quad  (for paintings, switch plate, etc.)
 void texQuad(float w,float h,int texID){
     useTex(texID);
@@ -75,8 +94,7 @@ void woodLeg(float x,float y,float z,float r,float h){
 // ════════════════════════════════════════════════════════════
 
 void drawWardrobe(){
-    // Positioned: right back corner
-    float wx=RW-3.0f, wz=-RD+1.8f;
+    float wx=WARDROBE_X, wz=WARDROBE_Z;
 
     // Main carcass – light wood
     useTex(TEX_WOOD_LIGHT);
@@ -112,7 +130,7 @@ void drawWardrobe(){
 }
 
 void drawBookshelf(){
-    float bx=-RW+2.5f, bz=-RD+1.5f;
+    float bx=BOOKSHELF_X, bz=BOOKSHELF_Z;
     // Main carcass
     useTex(TEX_WOOD_DARK);
     mat(0.18f,0.11f,0.06f, 0.38f,0.24f,0.13f, 0.22f,0.16f,0.10f,20);
@@ -144,7 +162,7 @@ void drawBookshelf(){
 }
 
 void drawBed(){
-    float bdX=-4.5f, bdZ=-RD+5.5f;
+    float bdX=BED_X, bdZ=BED_Z;
     // Lower the whole frame and extend the support structure so the bed sits on the floor.
     useTex(TEX_WOOD_DARK);
     mat(0.18f,0.11f,0.06f, 0.40f,0.25f,0.13f, 0.20f,0.14f,0.08f,16);
@@ -192,7 +210,7 @@ void drawBed(){
 }
 
 void drawBedsideTable(){
-    float btX=-10.5f, btZ=-RD+2.5f;
+    float btX=BEDSIDE_X, btZ=BEDSIDE_Z;
     // Body
     useTex(TEX_WOOD_DARK);
     mat(0.22f,0.10f,0.06f, 0.46f,0.24f,0.14f, 0.30f,0.18f,0.12f,24);
@@ -238,7 +256,7 @@ void drawBedsideTable(){
 }
 
 void drawDresser(){
-    float dx=8.0f, dz=-RD+1.5f;
+    float dx=DRESSER_X, dz=DRESSER_Z;
     useTex(TEX_WOOD_DARK);
     mat(0.24f,0.12f,0.07f, 0.48f,0.26f,0.15f, 0.34f,0.22f,0.14f,28);
     glPushMatrix(); glTranslatef(dx,2.5f,dz); box(3.8f,5.0f,2.8f,3.f,3.f); glPopMatrix();
@@ -270,8 +288,7 @@ void drawDresser(){
 }
 
 void drawStudyDesk(){
-    // Right wall
-    float dkX=RW-2.0f, dkZ=2.0f;
+    float dkX=DESK_X, dkZ=DESK_Z;
     // Desktop surface
     useTex(TEX_WOOD_DARK);
     mat(0.20f,0.12f,0.08f, 0.42f,0.27f,0.18f, 0.30f,0.21f,0.14f,28);
@@ -347,8 +364,7 @@ void drawStudyDesk(){
 }
 
 void drawWallClock(){
-    // Elegant grandfather-clock-style wall clock on left wall
-    float cx=-RW+0.12f, cy=6.0f, cz=-4.0f;
+    float cx=CLOCK_X, cy=CLOCK_Y, cz=CLOCK_Z;
     glPushMatrix();
     glTranslatef(cx,cy,cz);
     glRotatef(90,0,1,0);
@@ -401,7 +417,7 @@ void drawWallClock(){
 }
 
 void drawArmchair(){
-    float ax=-9.0f, az=5.0f;
+    float ax=ARMCHAIR_X, az=ARMCHAIR_Z;
     // Wooden support frame first, tucked into the cushion so pieces stay intact.
     useTex(TEX_WOOD_DARK);
     mat(0.18f,0.10f,0.06f, 0.38f,0.22f,0.13f, 0.30f,0.20f,0.12f,28);
@@ -423,8 +439,7 @@ void drawArmchair(){
 }
 
 void drawDoor(){
-    // Door in front wall (left side), opens inward
-    float dx=-RW+3.0f, dz=RD-0.1f;
+    float dx=DOOR_X, dz=DOOR_Z;
     // Door frame
     noTex();
     mat(0.75f,0.72f,0.68f, 0.88f,0.85f,0.82f, 0.25f,0.24f,0.22f,18);
@@ -633,11 +648,8 @@ void drawRoom(){
 //  PAINTINGS ON WALL
 // ════════════════════════════════════════════════════════════
 void drawPaintings(){
-    // Mona Lisa on back wall (centre-right)
-    drawPainting(3.0f,7.0f,-RD+0.15f, 3.5f,5.0f, TEX_PAINTING1);
-
-    // City view on back wall (left side)
-    drawPainting(-9.0f,7.8f,-RD+0.15f, 5.5f,3.8f, TEX_PAINTING2);
+    drawPainting(MONA_LISA_X,MONA_LISA_Y,MONA_LISA_Z, 3.5f,5.0f, TEX_PAINTING1);
+    drawPainting(CITY_VIEW_X,CITY_VIEW_Y,CITY_VIEW_Z, 5.5f,3.8f, TEX_PAINTING2);
 }
 
 // ════════════════════════════════════════════════════════════

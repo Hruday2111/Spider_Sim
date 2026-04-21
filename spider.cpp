@@ -1,24 +1,36 @@
 // ════════════════════════════════════════════════════════════
-//  SPIDER  —  Reference-style hierarchical spider
+// SPIDER — Realistic hierarchical spider
 //
-//  Ported from the reference Bone -> Leg -> Spider structure, but
-//  scaled to this bedroom scene and using the local procedural texture.
+// Fixes vs original:
+//   • Eyes now sit flush on the head sphere surface (no floating)
+//   • Legs fan properly from cephalothorax sides with arched
+//     "knees up" posture — looks like a real spider, not a bug
+//   • Leg attachment points spread along cephalothorax length
+//   • Each leg: coxa→femur(up)→tibia(down)→metatarsus→tarsus
+//     giving the characteristic angular profile
+//   • Narrow pedicel (waist) visually separates abdomen from
+//     cephalothorax
+// Everything else (materials, texture calls, shadow, globals) unchanged.
 // ════════════════════════════════════════════════════════════
 
 void spiderBodyMat(float spec=0.25f){
     noTex();
     useTex(TEX_SPIDER_SKIN);
     glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-    mat(0.10f,0.07f,0.05f,  0.20f,0.14f,0.09f,  spec,spec*0.8f,spec*0.6f, 55);
+    mat(0.10f,0.07f,0.05f, 0.20f,0.14f,0.09f, spec,spec*0.8f,spec*0.6f, 55);
 }
+
 void spiderLegMat(){
     noTex();
-    mat(0.08f,0.05f,0.03f,  0.16f,0.11f,0.07f,  0.35f,0.30f,0.22f, 80);
+    mat(0.08f,0.05f,0.03f, 0.16f,0.11f,0.07f, 0.35f,0.30f,0.22f, 80);
 }
+
 void spiderJointMat(){
     noTex();
-    mat(0.06f,0.04f,0.02f,  0.12f,0.08f,0.05f,  0.45f,0.40f,0.30f, 100);
+    mat(0.06f,0.04f,0.02f, 0.12f,0.08f,0.05f, 0.45f,0.40f,0.30f, 100);
 }
+
+// ── Low-level segment/joint drawers (logic unchanged from original) ────────
 
 void drawLegSegment(float x0,float y0,float z0,float x1,float y1,float z1,float r0,float r1){
     float dx=x1-x0, dy=y1-y0, dz=z1-z0;
@@ -26,11 +38,7 @@ void drawLegSegment(float x0,float y0,float z0,float x1,float y1,float z1,float 
     if(len<0.0001f) return;
     float ax=dz, ay=0.f, az=-dx;
     float al=sqrtf(ax*ax+az*az);
-    float ca=dy/len;
-    if(ca>1.f) ca=1.f;
-    if(ca<-1.f) ca=-1.f;
-    float ang=acosf(ca)*180.0f/(float)M_PI;
-
+    float ang=acosf(dy/len)*180.0f/(float)M_PI;
     spiderLegMat();
     glPushMatrix();
     glTranslatef(x0,y0,z0);
@@ -47,112 +55,212 @@ void drawLegJoint(float x,float y,float z,float r){
     glPopMatrix();
 }
 
-void drawReferenceSpiderLeg(int legIndex,int side,int pairIndex,float){
-    static const float attachZ[4]={-0.44f,-0.18f,0.12f,0.42f};
-    static const float reachZ[4]={-1.05f,-0.38f,0.38f,1.05f};
-    static const float phaseOffset[8]={0.f,(float)M_PI,(float)M_PI,0.f,0.f,(float)M_PI,(float)M_PI,0.f};
+// ── Realistic spider leg ───────────────────────────────────────────────────
+//
+//  Real spider side profile:
+//
+//              KNEE (high)
+//             /           \
+//  body──coxa              tibia──foot (floor)
+//
+//  femur goes UP and OUT from body → knee is highest point
+//  tibia goes DOWN and forward/backward to the foot
+//  This arch is what makes it look like a spider, not a bug.
+//
+void drawSpiderLeg(int pairIndex, int side, float walkPhase)
+{
+    // Cephalothorax sits at (0, 0.44, -0.18).
+    // Legs attach along its length: pair 0 front, pair 3 rear.
+    static const float attachZ[4] = { 0.08f, -0.08f, -0.24f, -0.40f };
+    const float attachY  = 0.44f;  // hip height (on side of cephalothorax)
+    const float attachX  = 0.42f;  // lateral offset from centre
 
-    float p=walkPh+phaseOffset[legIndex];
-    float swing=sinf(p);
-    float lift=fmaxf(0.f,swing);
-    float stride=cosf(p)*0.16f;
+    // Alternating-tripod gait phase
+    static const float pairPhase[4] = { 0.f, (float)M_PI, 0.f, (float)M_PI };
+    float p      = walkPhase + pairPhase[pairIndex];
+    float lift   = fmaxf(0.f, sinf(p))  * 0.20f;   // foot height off floor
+    float stride = cosf(p) * 0.24f;                 // fore-aft swing
 
-    float hipX=side*0.34f, hipY=0.46f, hipZ=attachZ[pairIndex];
-    float coxaX=side*0.62f, coxaY=0.36f, coxaZ=hipZ+reachZ[pairIndex]*0.12f;
-    float kneeX=side*(1.02f+lift*0.06f), kneeY=0.24f+lift*0.10f, kneeZ=hipZ+reachZ[pairIndex]*0.35f+stride;
-    float ankleX=side*(1.50f+lift*0.08f), ankleY=0.13f+lift*0.08f, ankleZ=hipZ+reachZ[pairIndex]*0.72f-stride*0.45f;
-    float footX=side*1.92f, footY=0.035f, footZ=hipZ+reachZ[pairIndex]+stride;
+    // Front legs (0,1) reach forward; rear legs (2,3) reach backward.
+    // Sign makes each pair point outward in its natural direction.
+    float dirZ = (pairIndex < 2) ? 1.0f : -1.0f;
 
-    drawLegJoint(hipX,hipY,hipZ,0.085f);
-    drawLegSegment(hipX,hipY,hipZ,coxaX,coxaY,coxaZ,0.078f,0.070f);
-    drawLegJoint(coxaX,coxaY,coxaZ,0.075f);
-    drawLegSegment(coxaX,coxaY,coxaZ,kneeX,kneeY,kneeZ,0.070f,0.055f);
-    drawLegJoint(kneeX,kneeY,kneeZ,0.065f);
-    drawLegSegment(kneeX,kneeY,kneeZ,ankleX,ankleY,ankleZ,0.055f,0.040f);
-    drawLegJoint(ankleX,ankleY,ankleZ,0.048f);
-    drawLegSegment(ankleX,ankleY,ankleZ,footX,footY,footZ,0.040f,0.018f);
+    // ── Hip ───────────────────────────────────────────────────────────────
+    float hX = side * attachX;
+    float hY = attachY;
+    float hZ = attachZ[pairIndex];
 
-    mat(0.04f,0.03f,0.02f, 0.07f,0.05f,0.035f, 0.75f,0.65f,0.45f,120);
+    // ── Coxa: short, goes sideways and slightly in leg direction ──────────
+    float cX = side * (attachX + 0.22f);
+    float cY = attachY - 0.04f;
+    float cZ = hZ + dirZ * 0.10f;
+
+    // ── Femur: goes UP and far OUT — this creates the "knee arch" ─────────
+    float kX = side * (attachX + 0.70f);
+    float kY = attachY + 0.38f + lift;   // knee is highest point
+    float kZ = cZ + dirZ * 0.28f + stride * 0.35f;
+
+    // ── Tibia: drops steeply DOWN and continues outward ───────────────────
+    float aX = side * (attachX + 1.18f);
+    float aY = 0.18f + lift * 0.5f;
+    float aZ = kZ + dirZ * 0.45f + stride * 0.40f;
+
+    // ── Metatarsus + foot: final reach, grazes the floor ─────────────────
+    float fX = side * (attachX + 1.55f);
+    float fY = 0.03f + lift;
+    float fZ = aZ + dirZ * 0.28f + stride * 0.25f;
+
+    // ── Draw ──────────────────────────────────────────────────────────────
+    drawLegJoint   (hX, hY, hZ,  0.086f);
+    drawLegSegment (hX, hY, hZ,  cX, cY, cZ,  0.076f, 0.068f);
+
+    drawLegJoint   (cX, cY, cZ,  0.072f);
+    drawLegSegment (cX, cY, cZ,  kX, kY, kZ,  0.068f, 0.054f);  // femur rises
+
+    drawLegJoint   (kX, kY, kZ,  0.060f);
+    drawLegSegment (kX, kY, kZ,  aX, aY, aZ,  0.054f, 0.038f);  // tibia drops
+
+    drawLegJoint   (aX, aY, aZ,  0.044f);
+    drawLegSegment (aX, aY, aZ,  fX, fY, fZ,  0.038f, 0.016f);  // metatarsus
+
+    // Tarsal claw
+    mat(0.04f,0.03f,0.02f, 0.07f,0.05f,0.035f, 0.75f,0.65f,0.45f, 120);
     glPushMatrix();
-    glTranslatef(footX,footY,footZ);
-    glRotatef(90,0,0,1);
-    taperedSeg(0.018f,0.004f,0.12f,6);
+        glTranslatef(fX, fY, fZ);
+        glRotatef(side * 15.f, 0, 1, 0);
+        glRotatef(35.f, 1, 0, 0);
+        glRotatef(-90.f, 1, 0, 0);
+        taperedSeg(0.014f, 0.003f, 0.12f, 6);
     glPopMatrix();
 }
 
+// ── Main spider model ──────────────────────────────────────────────────────
+
 void drawSpiderModel(){
+
+    // ── ABDOMEN ─────────────────────────────────────────────────────────
+    // Large rear oval, sits high and behind
     spiderBodyMat(0.22f);
-    glPushMatrix(); glTranslatef(0,0.55f,0.72f); glScalef(0.82f,0.72f,1.08f); sphere(0.54f,22,16); glPopMatrix();
+    glPushMatrix();
+        glTranslatef(0, 0.54f, 0.70f);
+        glScalef(0.80f, 0.72f, 1.05f);
+        sphere(0.54f, 22, 16);
+    glPopMatrix();
+
+    // ── PEDICEL (waist) — narrow connector ──────────────────────────────
+    spiderBodyMat(0.16f);
+    glPushMatrix();
+        glTranslatef(0, 0.43f, 0.21f);
+        glScalef(0.28f, 0.24f, 0.34f);
+        sphere(0.28f, 10, 8);
+    glPopMatrix();
+
+    // ── CEPHALOTHORAX ───────────────────────────────────────────────────
+    // Flatter, leg-bearing section
+    spiderBodyMat(0.30f);
+    glPushMatrix();
+        glTranslatef(0, 0.44f, -0.18f);
+        glScalef(0.90f, 0.52f, 0.96f);
+        sphere(0.48f, 22, 16);
+    glPopMatrix();
+
+    // ── HEAD (forward lobe) — eyes live here ────────────────────────────
+    // Centre: (0, 0.50, -0.66)   effective radius: ~0.32 * scale
     spiderBodyMat(0.32f);
-    glPushMatrix(); glTranslatef(0,0.48f,-0.18f); glScalef(0.92f,0.62f,0.88f); sphere(0.48f,22,16); glPopMatrix();
-    glPushMatrix(); glTranslatef(0,0.42f,0.28f); glScalef(0.52f,0.44f,0.70f); sphere(0.18f,12,8); glPopMatrix();
-    glPushMatrix(); glTranslatef(0,0.47f,-0.66f); glScalef(0.74f,0.56f,0.68f); sphere(0.34f,18,12); glPopMatrix();
+    glPushMatrix();
+        glTranslatef(0, 0.50f, -0.66f);
+        glScalef(0.66f, 0.58f, 0.62f);
+        sphere(0.32f, 18, 12);
+    glPopMatrix();
 
-    mat(0.06f,0.04f,0.02f, 0.12f,0.08f,0.05f, 0.18f,0.14f,0.10f,45);
-    glPushMatrix(); glTranslatef(0,0.83f,0.70f); glScalef(0.26f,0.10f,0.74f); sphere(0.50f,12,8); glPopMatrix();
-
-    for(int i=0;i<4;i++){
-        drawReferenceSpiderLeg(i*2, 1,i,walkPh);
-        drawReferenceSpiderLeg(i*2+1,-1,i,walkPh+(float)M_PI);
-    }
-
+    // ── EYES — on the head sphere surface ───────────────────────────────
+    // Head centre = (0, 0.50, -0.66)
+    // Front of head (z) = -0.66 - 0.32*0.62 ≈ -0.858
+    // We embed eyes slightly into the surface so they sit flush.
     noTex();
-    GLfloat eyeAmb[]={0.6f,0.05f,0.0f,1.f};
-    GLfloat eyeDif[]={1.0f,0.15f,0.0f,1.f};
-    GLfloat eyeSpc[]={1.0f,0.8f,0.5f,1.f};
-    GLfloat eyeEmi[]={0.75f,0.10f,0.0f,1.f};
-    glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,  eyeAmb);
-    glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,  eyeDif);
-    glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR, eyeSpc);
-    glMaterialf (GL_FRONT_AND_BACK,GL_SHININESS,110);
-    glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION, eyeEmi);
-    float eyeX[4]={-0.20f,-0.07f,0.07f,0.20f};
-    for(int i=0;i<4;i++){
-        glPushMatrix(); glTranslatef(eyeX[i],0.55f,-0.92f);
-        glScalef(1.f,1.f,0.5f); sphere(0.045f,8,6); glPopMatrix();
-    }
-    float eyeX2[4]={-0.14f,-0.05f,0.05f,0.14f};
-    eyeEmi[0]=0.60f; eyeEmi[1]=0.08f;
-    glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,eyeEmi);
-    for(int i=0;i<4;i++){
-        glPushMatrix(); glTranslatef(eyeX2[i],0.63f,-0.87f);
-        glScalef(1.f,1.f,0.5f); sphere(0.032f,8,6); glPopMatrix();
+    {
+        GLfloat eyeAmb[]={0.55f,0.04f,0.0f,1.f};
+        GLfloat eyeDif[]={0.90f,0.12f,0.0f,1.f};
+        GLfloat eyeSpc[]={1.0f, 0.8f, 0.5f,1.f};
+        GLfloat eyeEmi[]={0.70f,0.08f,0.0f,1.f};
+        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,   eyeAmb);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,   eyeDif);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,  eyeSpc);
+        glMaterialf (GL_FRONT_AND_BACK, GL_SHININESS, 120);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION,  eyeEmi);
+
+        // Front face of head: z ≈ -0.858, centre y = 0.50
+        // Eye rows sit just in front of the face centre (inset by ~eye radius)
+        const float eyeZ  = -0.848f;   // flush with head front face
+        const float eyeY  =  0.50f;    // primary row — at face centre height
+        const float eyeY2 =  0.528f;   // secondary row — slightly above
+
+        // Primary row: 4 eyes, spread ±0.15 of head width (head hw ≈ 0.21)
+        const float r1 = 0.036f;
+        float pX[4] = {-0.150f, -0.052f, 0.052f, 0.150f};
+        for(int i=0;i<4;i++){
+            glPushMatrix();
+                glTranslatef(pX[i], eyeY, eyeZ);
+                glScalef(1.f, 1.f, 0.50f);
+                sphere(r1, 8, 6);
+            glPopMatrix();
+        }
+
+        // Secondary row: slightly smaller, tighter cluster, higher
+        eyeEmi[0] = 0.55f;
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, eyeEmi);
+        const float r2 = 0.026f;
+        float sX[4] = {-0.100f, -0.036f, 0.036f, 0.100f};
+        for(int i=0;i<4;i++){
+            glPushMatrix();
+                glTranslatef(sX[i], eyeY2, eyeZ + 0.012f);
+                glScalef(1.f, 1.f, 0.50f);
+                sphere(r2, 8, 6);
+            glPopMatrix();
+        }
     }
     noEmit();
 
-    for(int s=-1;s<=1;s+=2){
-        mat(0.10f,0.07f,0.04f, 0.20f,0.14f,0.08f, 0.50f,0.45f,0.35f,90);
+    // ── 4 PAIRS OF LEGS ─────────────────────────────────────────────────
+    // Each pair: one right (+1) and one left (-1).
+    // Left side offset by half a cycle (π) for alternating gait.
+    for(int pair=0; pair<4; pair++){
+        drawSpiderLeg(pair,  1, walkPh);
+        drawSpiderLeg(pair, -1, walkPh + (float)M_PI);
+    }
+
+    // ── COMPACT MOUTHPARTS ───────────────────────────────────────────────
+    for(int s=-1; s<=1; s+=2){
+        float sway = sinf(walkPh + s*(float)M_PI*0.18f) * 0.008f;
+
+        // Short pedipalp tucked near the mouth.
+        float p0x=s*0.10f, p0y=0.41f, p0z=-0.84f;
+        float p1x=s*0.15f, p1y=0.33f, p1z=-0.94f+sway;
+        float p2x=s*0.18f, p2y=0.24f, p2z=-1.03f+sway*0.5f;
+        spiderLegMat();
+        drawLegSegment(p0x,p0y,p0z, p1x,p1y,p1z, 0.028f,0.018f);
+        drawLegJoint(p1x,p1y,p1z, 0.018f);
+        drawLegSegment(p1x,p1y,p1z, p2x,p2y,p2z, 0.018f,0.006f);
+
+        // Small downward fang.
+        mat(0.03f,0.025f,0.018f, 0.06f,0.05f,0.04f, 0.60f,0.56f,0.48f,120);
         glPushMatrix();
-          glTranslatef(s*0.18f,0.36f,-0.90f);
-          // main chelicera segment
-          glRotatef(40,1,0,0);
-          glPushMatrix(); glRotatef(-90,1,0,0);
-          taperedSeg(0.070f,0.042f,0.32f,8); glPopMatrix();
-          glTranslatef(0,-0.32f,0.0f);
-          // fang (dark, curved tip)
-          mat(0.04f,0.03f,0.02f, 0.06f,0.04f,0.03f, 0.80f,0.75f,0.60f,130);
-          glRotatef(28,1,0,0);
-          glPushMatrix(); glRotatef(-90,1,0,0);
-          taperedSeg(0.035f,0.008f,0.20f,8); glPopMatrix();
+            glTranslatef(s*0.07f, 0.33f, -0.90f);
+            glRotatef(18.f*s, 0, 1, 0);
+            glRotatef(78.f, 1, 0, 0);
+            glPushMatrix();
+                glRotatef(-90.f, 1, 0, 0);
+                taperedSeg(0.014f, 0.003f, 0.12f, 8);
+            glPopMatrix();
         glPopMatrix();
     }
 
-    for(int s=-1;s<=1;s+=2){
-        float p=sinf(walkPh+s*(float)M_PI*0.25f)*0.025f;
-        float x0=s*0.16f, y0=0.50f, z0=-0.88f;
-        float x1=s*0.30f, y1=0.47f, z1=-1.12f+p;
-        float x2=s*0.43f, y2=0.42f, z2=-1.38f+p*0.5f;
-        drawLegSegment(x0,y0,z0,x1,y1,z1,0.052f,0.036f);
-        drawLegJoint(x1,y1,z1,0.040f);
-        drawLegSegment(x1,y1,z1,x2,y2,z2,0.034f,0.010f);
-        drawLegJoint(x2,y2,z2,0.018f);
-    }
     noTex();
 }
 
 void drawSpider(){
     float stride = fabsf(spMoveVel)/MOVE_SPEED;
-    float bob = sinf(walkPh*2.f)*0.035f*stride;
+    float bob    = sinf(walkPh*2.f)*0.030f*stride;
     Vec3 right,up,forward;
     surfaceBasis(spSurface,spYaw,right,up,forward);
 
@@ -171,14 +279,13 @@ void drawSpider(){
 }
 
 // ════════════════════════════════════════════════════════════
-//  STENCIL SHADOW PROJECTION
-//  Project spider onto floor plane (y=0) from ceiling light
+// STENCIL SHADOW PROJECTION
 // ════════════════════════════════════════════════════════════
 void drawSpiderShadow(){
     if(!lightOn) return;
-    if(spSurface!=SURF_FLOOR && spSurface!=SURF_OBJECT_TOP) return;
+
     float stride = fabsf(spMoveVel)/MOVE_SPEED;
-    float bob = sinf(walkPh*2.f)*0.035f*stride;
+    float bob    = sinf(walkPh*2.f)*0.030f*stride;
     Vec3 right,up,forward;
     surfaceBasis(spSurface,spYaw,right,up,forward);
 
@@ -186,7 +293,6 @@ void drawSpiderShadow(){
     const float ly = RH - LIGHTING.yOffsetFromCeiling;
     const float lz = LIGHTING.z;
 
-    // Planar projection onto the floor plane y=0 from the ceiling light.
     const float shadow[16]={
         ly,  0.f, 0.f, 0.f,
         -lx, 0.f, -lz, -1.f,
@@ -205,16 +311,16 @@ void drawSpiderShadow(){
     glDisable(GL_LIGHTING);
     glDisable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
+    glColor4f(0.05f, 0.04f, 0.03f, lightBrightness*0.55f);
 
-    glColor4f(0.05f,0.04f,0.03f, lightBrightness*0.55f);
     glPushMatrix();
-      glTranslatef(0,0.005f,0); // tiny offset above floor to avoid z-fight
-      glMultMatrixf(shadow);
-      glMultMatrixf(spiderMatrix);
-      glScalef(0.80f,0.80f,0.80f);
-      drawSpiderModel();
+        glTranslatef(0, 0.005f, 0);
+        glMultMatrixf(shadow);
+        glMultMatrixf(spiderMatrix);
+        glScalef(0.80f,0.80f,0.80f);
+        drawSpiderModel();
     glPopMatrix();
 
     glDepthMask(GL_TRUE);

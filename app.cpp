@@ -46,28 +46,35 @@ void display(){
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    // Camera
-    Vec3 sn=surfaceNormal(spSurface);
-    float targetX=spX+sn.x*0.45f;
-    float targetY=spY+sn.y*0.45f+0.45f;
-    float targetZ=spZ+sn.z*0.45f;
-    float ty=DEG2RAD(camYawOfs-spYaw);
+    // Camera follows the spider's current surface basis. This keeps orbit
+    // controls stable when the spider moves onto walls or the ceiling.
+    float stride = fabsf(spMoveVel)/MOVE_SPEED;
+    float bob    = sinf(walkPh*2.f)*0.030f*stride;
+    Vec3 right,up,forward;
+    surfaceBasis(spSurface,spYaw,right,up,forward);
+    Vec3 pos=vadd(v3(spX,spY,spZ),vscale(up,bob));
+    Vec3 target=vadd(pos,vscale(up,0.45f));
+    float ty=DEG2RAD(camYawOfs);
     float pr=DEG2RAD(camPitch);
-    float ex=targetX+camDist*sinf(ty)*cosf(pr);
-    float ey=targetY+camDist*sinf(pr);
-    float ez=targetZ+camDist*cosf(ty)*cosf(pr);
+    Vec3 orbit=vadd(
+        vadd(vscale(right,sinf(ty)*cosf(pr)),
+             vscale(up,sinf(pr))),
+        vscale(forward,-cosf(ty)*cosf(pr))
+    );
+    Vec3 eye=vadd(target,vscale(orbit,camDist));
     const float CM=0.3f;
-    if(ex<-RW+CM)ex=-RW+CM; if(ex>RW-CM)ex=RW-CM;
-    if(ez<-RD+CM)ez=-RD+CM; if(ez>RD-CM)ez=RD-CM;
-    if(ey<CM)ey=CM;          if(ey>RH-CM)ey=RH-CM;
-    gluLookAt(ex,ey,ez, targetX,targetY,targetZ, 0,1,0);
+    if(eye.x<-RW+CM)eye.x=-RW+CM; if(eye.x>RW-CM)eye.x=RW-CM;
+    if(eye.z<-RD+CM)eye.z=-RD+CM; if(eye.z>RD-CM)eye.z=RD-CM;
+    if(eye.y<CM)eye.y=CM;         if(eye.y>RH-CM)eye.y=RH-CM;
+    Vec3 camUp=vnorm(vadd(vscale(up,cosf(pr)),vscale(forward,sinf(pr))));
+    gluLookAt(eye.x,eye.y,eye.z, target.x,target.y,target.z, camUp.x,camUp.y,camUp.z);
 
     setupLighting();
 
     drawRoom();
     drawCeilingLight();
     drawPaintings();
-    drawSwitch(-RW+0.12f, 4.0f, -8.0f);
+    drawSwitch(SWITCH_X, SWITCH_Y, SWITCH_Z);
     drawDoor();
     drawWardrobe();
     drawBookshelf();

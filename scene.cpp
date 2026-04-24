@@ -16,12 +16,11 @@ const float ARMCHAIR_X = -9.0f,       ARMCHAIR_Z = 5.0f;
 const float DOOR_X = -RW + 3.0f,      DOOR_Z = RD - 0.1f;
 
 // Wall decor anchors. These are the first numbers to tweak when moving
-// paintings or the switch plate.
+// paintings.
 const float MONA_LISA_X = 3.0f,       MONA_LISA_Y = 7.0f,  MONA_LISA_Z = -RD + 0.15f;
 const float CITY_VIEW_X = -9.0f,      CITY_VIEW_Y = 7.8f,  CITY_VIEW_Z = -RD + 0.15f;
-const float SWITCH_X = -RW + 0.12f,   SWITCH_Y = 4.0f,     SWITCH_Z = -8.0f;
 
-// Textured quad  (for paintings, switch plate, etc.)
+// Textured quad  (for paintings, etc.)
 void texQuad(float w,float h,int texID){
     useTex(texID);
     glBegin(GL_QUADS);
@@ -59,23 +58,6 @@ void drawPainting(float cx,float cy,float cz, float pw,float ph, int texID, bool
     mat(0.90f,0.90f,0.90f, 1.0f,1.0f,1.0f, 0.05f,0.05f,0.05f,8);
     texQuad(pw,ph,texID);
     glPopMatrix();
-    glPopMatrix();
-}
-
-// Wall light switch
-void drawSwitch(float x,float y,float z){
-    glPushMatrix();
-    glTranslatef(x,y,z);
-    // plate
-    noTex();
-    mat(0.80f,0.78f,0.75f, 0.90f,0.88f,0.85f, 0.40f,0.40f,0.38f,30);
-    box(0.22f,0.32f,0.04f);
-    // toggle
-    mat(lightOn?0.90f:0.25f, lightOn?0.88f:0.25f, lightOn?0.80f:0.25f,
-        lightOn?1.0f:0.30f,  lightOn?0.98f:0.30f, lightOn?0.88f:0.30f,
-        0.5f,0.5f,0.5f,40);
-    glTranslatef(0, lightOn?0.04f:-0.04f, 0.04f);
-    box(0.10f,0.12f,0.04f);
     glPopMatrix();
 }
 
@@ -697,5 +679,4 @@ void setupLighting(){
     glLightf(GL_LIGHT0,GL_QUADRATIC_ATTENUATION, LIGHTING.quadraticAttenuation);
 
     glDisable(GL_LIGHT1);
-    glDisable(GL_LIGHT2);
 }

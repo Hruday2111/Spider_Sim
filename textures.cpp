@@ -328,4 +328,9 @@ void initTextures(){
 }
 
 void useTex(int id){ glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,textures[id]); }
-void noTex(){ glDisable(GL_TEXTURE_2D); }
+void noTex(){
+    glMatrixMode(GL_TEXTURE);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glDisable(GL_TEXTURE_2D);
+}

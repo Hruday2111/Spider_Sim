@@ -71,9 +71,32 @@ void cylinder(float r,float h,int sl=16){
     }
 }
 
-// Sphere wrapper (for spider body segments)
+// Sphere with normals and texture coordinates.
 void sphere(float r,int sl=20,int st=14){
-    glutSolidSphere(r,sl,st);
+    for(int j=0;j<st;j++){
+        float v0=(float)j/st;
+        float v1=(float)(j+1)/st;
+        float t0=v0*(float)M_PI;
+        float t1=v1*(float)M_PI;
+        float y0=cosf(t0), sr0=sinf(t0);
+        float y1=cosf(t1), sr1=sinf(t1);
+
+        glBegin(GL_TRIANGLE_STRIP);
+        for(int i=0;i<=sl;i++){
+            float u=(float)i/sl;
+            float p=u*2.0f*(float)M_PI;
+            float c=cosf(p), s=sinf(p);
+
+            glNormal3f(sr0*c,y0,sr0*s);
+            glTexCoord2f(u,1.0f-v0);
+            glVertex3f(r*sr0*c,r*y0,r*sr0*s);
+
+            glNormal3f(sr1*c,y1,sr1*s);
+            glTexCoord2f(u,1.0f-v1);
+            glVertex3f(r*sr1*c,r*y1,r*sr1*s);
+        }
+        glEnd();
+    }
 }
 
 // Tapered segment (leg bone)

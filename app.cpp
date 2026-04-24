@@ -1,3 +1,77 @@
+const char* cameraModeName(){
+    switch(camMode){
+        case CAM_SPIDER_POV: return "Spider POV";
+        case CAM_FREE_ORBIT: return "Free Orbit";
+        default:             return "Follow";
+    }
+}
+
+const char* surfaceName(){
+    switch(spSurface){
+        case SURF_CEILING:    return "Ceiling";
+        case SURF_WALL_X_NEG: return "Left Wall";
+        case SURF_WALL_X_POS: return "Right Wall";
+        case SURF_WALL_Z_NEG: return "Back Wall";
+        case SURF_WALL_Z_POS: return "Front Wall";
+        case SURF_OBJECT_TOP: return "Object Top";
+        default:              return "Floor";
+    }
+}
+
+void setGameplayProjection(){
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(55.0, (winH>0) ? (double)winW / (double)winH : 1.0, 0.05, 400.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+void applyCamera(){
+    float stride = fabsf(spMoveVel)/MOVE_SPEED;
+    float bob    = sinf(walkPh*2.f)*0.030f*stride;
+    Vec3 right,up,forward;
+    surfaceBasis(spSurface,spYaw,right,up,forward);
+    Vec3 pos=vadd(v3(spX,spY,spZ),vscale(up,bob));
+    Vec3 target=vadd(pos,vscale(up,0.45f));
+
+    if(camMode==CAM_SPIDER_POV){
+        Vec3 eye=vadd(pos,
+                      vadd(vscale(up,0.40f),
+                           vscale(forward,0.78f)));
+        Vec3 look=vadd(eye,
+                       vadd(vscale(forward,4.0f),
+                            vscale(up,0.10f)));
+        gluLookAt(eye.x,eye.y,eye.z, look.x,look.y,look.z, up.x,up.y,up.z);
+        return;
+    }
+
+    float pitch = DEG2RAD(camPitch);
+    Vec3 eye;
+    Vec3 camUp;
+
+    if(camMode==CAM_FOLLOW){
+        eye=vadd(target,
+                 vadd(vscale(up,camDist*0.34f),
+                      vscale(forward,-camDist)));
+        camUp=up;
+    }else{
+        float yaw = DEG2RAD(camYawOfs);
+        Vec3 orbit=vadd(
+            vadd(vscale(right,sinf(yaw)*cosf(pitch)),
+                 vscale(up,sinf(pitch))),
+            vscale(forward,-cosf(yaw)*cosf(pitch))
+        );
+        eye=vadd(target,vscale(orbit,camDist));
+        camUp=vnorm(vadd(vscale(up,cosf(pitch)),vscale(forward,sinf(pitch))));
+    }
+
+    const float CM=0.3f;
+    if(eye.x<-RW+CM)eye.x=-RW+CM; if(eye.x>RW-CM)eye.x=RW-CM;
+    if(eye.z<-RD+CM)eye.z=-RD+CM; if(eye.z>RD-CM)eye.z=RD-CM;
+    if(eye.y<CM)eye.y=CM;         if(eye.y>RH-CM)eye.y=RH-CM;
+    gluLookAt(eye.x,eye.y,eye.z, target.x,target.y,target.z, camUp.x,camUp.y,camUp.z);
+}
+
 // ════════════════════════════════════════════════════════════
 //  HUD
 // ════════════════════════════════════════════════════════════
@@ -11,26 +85,26 @@ void drawHUD(){
     glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     glColor4f(0.0f,0.0f,0.0f,0.60f);
     glBegin(GL_QUADS);
-    glVertex2i(0,0); glVertex2i(620,0); glVertex2i(620,170); glVertex2i(0,170);
+    glVertex2i(0,0); glVertex2i(700,0); glVertex2i(700,190); glVertex2i(0,190);
     glEnd(); glDisable(GL_BLEND);
 
     glColor3f(1.0f,0.94f,0.72f);
+    char status[256];
+    std::snprintf(status,sizeof(status),
+                  "Camera: %s [1-3]   Surface: %s   Light: %s",
+                  cameraModeName(), surfaceName(), lightOn ? "ON" : "OFF");
     const char* lines[]={
-        "3D Spider Simulation  |  OpenGL/GLUT  |  Bedroom",
-        "W/S : Move Forward/Back       A/D : Turn Left/Right",
-        "C : Change Surface at Edge    Arrow L/R : Orbit",
-        "Mouse Drag : Free Orbit       Scroll/+/- : Zoom",
-        "L : Light Switch              O : Open/Close Door",
-        "ESC : Quit",
+        "3D Spider Simulation  |  Bedroom",
+        status,
+        "W/S Move   A/D Turn   C Change Surface   O Door   L Light",
+        "1 Follow   2 Spider POV   3 Free Orbit",
+        "Free Orbit: Mouse Drag / Arrows orbit   Scroll or +/- zoom",
+        "ESC Quit",
     };
-    const char* status = lightOn ? "[ LIGHT: ON ]" : "[ LIGHT: OFF ]";
     for(int i=0;i<6;i++){
-        glRasterPos2i(14,22+i*24);
+        glRasterPos2i(14,24+i*26);
         for(const char*s=lines[i];*s;s++) glutBitmapCharacter(GLUT_BITMAP_9_BY_15,*s);
     }
-    glColor3f(lightOn?0.9f:0.45f, lightOn?0.9f:0.45f, lightOn?0.2f:0.45f);
-    glRasterPos2i(14,170-18);
-    for(const char*s=status;*s;s++) glutBitmapCharacter(GLUT_BITMAP_9_BY_15,*s);
 
     glEnable(GL_DEPTH_TEST); glEnable(GL_LIGHTING);
     glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix();
@@ -44,37 +118,13 @@ void display(){
     glClearColor(0.0f,0.0f,0.0f,1.f);
 
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-    glLoadIdentity();
-
-    // Camera follows the spider's current surface basis. This keeps orbit
-    // controls stable when the spider moves onto walls or the ceiling.
-    float stride = fabsf(spMoveVel)/MOVE_SPEED;
-    float bob    = sinf(walkPh*2.f)*0.030f*stride;
-    Vec3 right,up,forward;
-    surfaceBasis(spSurface,spYaw,right,up,forward);
-    Vec3 pos=vadd(v3(spX,spY,spZ),vscale(up,bob));
-    Vec3 target=vadd(pos,vscale(up,0.45f));
-    float ty=DEG2RAD(camYawOfs);
-    float pr=DEG2RAD(camPitch);
-    Vec3 orbit=vadd(
-        vadd(vscale(right,sinf(ty)*cosf(pr)),
-             vscale(up,sinf(pr))),
-        vscale(forward,-cosf(ty)*cosf(pr))
-    );
-    Vec3 eye=vadd(target,vscale(orbit,camDist));
-    const float CM=0.3f;
-    if(eye.x<-RW+CM)eye.x=-RW+CM; if(eye.x>RW-CM)eye.x=RW-CM;
-    if(eye.z<-RD+CM)eye.z=-RD+CM; if(eye.z>RD-CM)eye.z=RD-CM;
-    if(eye.y<CM)eye.y=CM;         if(eye.y>RH-CM)eye.y=RH-CM;
-    Vec3 camUp=vnorm(vadd(vscale(up,cosf(pr)),vscale(forward,sinf(pr))));
-    gluLookAt(eye.x,eye.y,eye.z, target.x,target.y,target.z, camUp.x,camUp.y,camUp.z);
-
+    setGameplayProjection();
+    applyCamera();
     setupLighting();
 
     drawRoom();
     drawCeilingLight();
     drawPaintings();
-    drawSwitch(SWITCH_X, SWITCH_Y, SWITCH_Z);
     drawDoor();
     drawWardrobe();
     drawBookshelf();
@@ -84,8 +134,10 @@ void display(){
     drawStudyDesk();
     drawWallClock();
     drawArmchair();
-    drawSpiderShadow();
-    drawSpider();
+    if(camMode!=CAM_SPIDER_POV){
+        drawSpiderShadow();
+        drawSpider();
+    }
     drawHUD();
 
     glutSwapBuffers();
@@ -93,10 +145,9 @@ void display(){
 
 void reshape(int w,int h){
     if(!h)h=1;
+    winW=w; winH=h;
     glViewport(0,0,w,h);
-    glMatrixMode(GL_PROJECTION); glLoadIdentity();
-    gluPerspective(55.0,(double)w/h,0.05,400.0);
-    glMatrixMode(GL_MODELVIEW);
+    setGameplayProjection();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -224,6 +275,9 @@ void keyboard(unsigned char k,int,int){
         case'c':case'C': switchSurfaceAtEdge(); glutPostRedisplay(); break;
         case'l':case'L': lightOn=!lightOn; glutPostRedisplay(); break;
         case'o':case'O': doorOpening=!doorOpening; glutPostRedisplay(); break;
+        case'1': camMode=CAM_FOLLOW; glutPostRedisplay(); break;
+        case'2': camMode=CAM_SPIDER_POV; glutPostRedisplay(); break;
+        case'3': camMode=CAM_FREE_ORBIT; glutPostRedisplay(); break;
         case'+':case'=': camDist-=0.7f; if(camDist<DMIN)camDist=DMIN; glutPostRedisplay(); break;
         case'-':case'_': camDist+=0.7f; if(camDist>DMAX)camDist=DMAX; glutPostRedisplay(); break;
         case 27: exit(0);
@@ -238,6 +292,10 @@ void keyboardUp(unsigned char k,int,int){
     }
 }
 void specialKey(int k,int,int){
+    if(camMode!=CAM_FREE_ORBIT){
+        glutPostRedisplay();
+        return;
+    }
     switch(k){
         case GLUT_KEY_UP:    camPitch+=2.5f; if(camPitch>82)camPitch=82; break;
         case GLUT_KEY_DOWN:  camPitch-=2.5f; if(camPitch<-15)camPitch=-15; break;
@@ -247,12 +305,18 @@ void specialKey(int k,int,int){
     glutPostRedisplay();
 }
 void mouseBtn(int btn,int state,int x,int y){
-    if(btn==GLUT_LEFT_BUTTON){mdown=(state==GLUT_DOWN);lmx=x;lmy=y;}
-    if(btn==3){camDist-=0.7f;if(camDist<DMIN)camDist=DMIN;glutPostRedisplay();}
-    if(btn==4){camDist+=0.7f;if(camDist>DMAX)camDist=DMAX;glutPostRedisplay();}
+    if(btn==GLUT_LEFT_BUTTON){mdown=(state==GLUT_DOWN && camMode==CAM_FREE_ORBIT);lmx=x;lmy=y;}
+    if(btn==3){
+        camDist-=0.7f; if(camDist<DMIN)camDist=DMIN;
+        glutPostRedisplay();
+    }
+    if(btn==4){
+        camDist+=0.7f; if(camDist>DMAX)camDist=DMAX;
+        glutPostRedisplay();
+    }
 }
 void mouseMove(int x,int y){
-    if(!mdown)return;
+    if(!mdown || camMode!=CAM_FREE_ORBIT)return;
     camYawOfs-=(x-lmx)*0.42f;
     camPitch  -=(y-lmy)*0.28f;
     if(camPitch>82)camPitch=82; if(camPitch<-15)camPitch=-15;

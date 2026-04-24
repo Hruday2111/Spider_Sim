@@ -6,7 +6,7 @@
  * ║  FEATURES:                                                       ║
  * ║  • Realistic organic spider (sphere-based body + tapered legs)  ║
  * ║  • Procedural textures (floor planks, walls, spider skin, etc.) ║
- * ║  • Ceiling light with on/off switch – key L                     ║
+ * ║  • Ceiling light toggle – key L                                 ║
  * ║  • Projected stencil shadow on floor                            ║
  * ║  • Full bedroom: bed, wardrobe, desk, dresser, bookshelf        ║
  * ║  • Pendulum wall clock, bedside table + lamp                    ║
@@ -19,11 +19,11 @@
  * ║  W/S           – move forward / backward                        ║
  * ║  A/D           – turn left / right                              ║
  * ║  C             – change surface at an edge/corner               ║
- * ║  Arrow UP/DN   – camera tilt                                    ║
- * ║  Arrow L/R     – camera orbit                                   ║
- * ║  Mouse drag    – free camera orbit                              ║
+ * ║  Arrow UP/DN   – free-orbit camera tilt                         ║
+ * ║  Arrow L/R     – free-orbit camera orbit                        ║
+ * ║  Mouse drag    – free-orbit camera orbit                        ║
  * ║  Scroll/+/-    – zoom                                           ║
- * ║  L             – light switch (ceiling)                         ║
+ * ║  L             – toggle ceiling light                           ║
  * ║  O             – open/close door                                ║
  * ║  ESC           – quit                                           ║
  * ╠══════════════════════════════════════════════════════════════════╣
@@ -66,7 +66,7 @@ const float RD = 22.0f;   // half-depth  Z  → room is 44 units deep
 //  GLOBAL STATE
 // ════════════════════════════════════════════════════════════
 // Spider
-float spX=0.f, spY=0.f, spZ=5.f, spYaw=0.f;
+float spX=0.f, spY=0.f, spZ=5.f, spYaw=180.f;
 float walkPh=0.f;
 const float MSTEP=0.14f, TSTEP=2.5f;
 bool keyForward=false, keyBack=false, keyLeft=false, keyRight=false;
@@ -79,13 +79,16 @@ SurfaceType spSurface=SURF_FLOOR;
 int spObjectIndex=-1;
 
 // Camera
-float camPitch=20.f, camDist=9.f, camYawOfs=180.f;
+enum CameraMode { CAM_FOLLOW, CAM_SPIDER_POV, CAM_FREE_ORBIT };
+CameraMode camMode = CAM_FOLLOW;
+float camPitch=20.f, camDist=9.f, camYawOfs=0.f;
 const float DMIN=2.f, DMAX=40.f;
 int lmx=-1,lmy=-1; bool mdown=false;
+int winW=1280, winH=800;
 
-// Light switch
+// Light
 bool lightOn = true;
-float lightBrightness = 1.0f;   // animated 0→1 on switch
+float lightBrightness = 1.0f;   // animated 0→1 on toggle
 
 // Lighting tuning
 // Keep all experiment-friendly light numbers here so you can adjust the room
@@ -158,7 +161,7 @@ float dtSec     = 0.016f;
 // ════════════════════════════════════════════════════════════
 struct AABB { float cx,cz,hw,hd; };
 // Carefully measured so nothing touches anything
-const int NC = 9;
+const int NC = 8;
 AABB cols[NC] = {
     // wardrobe  (right back corner)
     { RW-3.0f,   -RD+1.8f,   3.0f,  1.8f },
@@ -176,8 +179,6 @@ AABB cols[NC] = {
     {-RW+3.0f,   RD-1.5f,  2.5f,  1.5f },
     // armchair (left mid-room)
     { -9.0f,     5.0f,      1.8f,  2.0f },
-    // rug (just decoration, no collision needed → dummy)
-    {  0.0f,    99.0f,     0.1f,  0.1f },
 };
 
 struct ClimbBox { float cx,cz,hw,hd,top; };
@@ -250,7 +251,7 @@ void surfaceBasis(SurfaceType s,float yaw,Vec3 &right,Vec3 &up,Vec3 &forward){
 
 bool collides(float nx,float nz){
     const float SR=1.0f;
-    for(int i=0;i<NC-1;i++){
+    for(int i=0;i<NC;i++){
         // skip door collision when door is open
         if(i==6 && doorAngle>45.f) continue;
         if(fabsf(nx-cols[i].cx)<cols[i].hw+SR &&

@@ -3,11 +3,9 @@
 //  We create OpenGL 1D/2D textures from raw pixel data at init.
 // ════════════════════════════════════════════════════════════
 #include <jpeglib.h>
-#include <png.h>
-
 enum TexID {
     TEX_FLOOR=0, TEX_WALL, TEX_CEILING, TEX_WOOD_DARK,
-    TEX_WOOD_LIGHT, TEX_FABRIC_BED, TEX_SPIDER_SKIN,
+    TEX_WOOD_LIGHT, TEX_FABRIC_BED,
     TEX_PAINTING1,  // Mona Lisa style
     TEX_PAINTING2,  // Starry Night style
     TEX_COUNT
@@ -95,21 +93,6 @@ static void genFabricTex(int W,int H,unsigned char* p){
         p[(y*W+x)*3+2]=(unsigned char)(b*255);
     }
 }
-static void genSpiderSkinTex(int W,int H,unsigned char* p){
-    // dark brown chitinous look with iridescent highlight
-    for(int y=0;y<H;y++) for(int x=0;x<W;x++){
-        float n=smoothNoise(x*0.4f,y*0.4f)*0.15f;
-        float hi=smoothNoise(x*1.2f,y*1.2f)*0.10f;
-        float r=0.10f+n+hi*0.3f;
-        float g=0.07f+n*0.6f+hi*0.1f;
-        float b=0.05f+n*0.3f+hi*0.5f;
-        r=r>1?1:r; g=g>1?1:g; b=b>1?1:b;
-        p[(y*W+x)*3+0]=(unsigned char)(r*255);
-        p[(y*W+x)*3+1]=(unsigned char)(g*255);
-        p[(y*W+x)*3+2]=(unsigned char)(b*255);
-    }
-}
-
 // Procedural Mona Lisa (impressionistic)
 static void genMonaLisa(int W,int H,unsigned char* p){
     // dark background, central figure silhouette, golden skin tones
@@ -242,73 +225,6 @@ bool buildJPEGTexture(GLuint id,const char* path){
     return true;
 }
 
-bool buildPNGTexture(GLuint id,const char* path){
-    FILE* f=fopen(path,"rb");
-    if(!f) return false;
-
-    png_byte header[8];
-    if(fread(header,1,8,f)!=8 || png_sig_cmp(header,0,8)){
-        fclose(f);
-        return false;
-    }
-
-    png_structp png=png_create_read_struct(PNG_LIBPNG_VER_STRING,nullptr,nullptr,nullptr);
-    if(!png){
-        fclose(f);
-        return false;
-    }
-    png_infop info=png_create_info_struct(png);
-    if(!info){
-        png_destroy_read_struct(&png,nullptr,nullptr);
-        fclose(f);
-        return false;
-    }
-    if(setjmp(png_jmpbuf(png))){
-        png_destroy_read_struct(&png,&info,nullptr);
-        fclose(f);
-        return false;
-    }
-
-    png_init_io(png,f);
-    png_set_sig_bytes(png,8);
-    png_read_info(png,info);
-
-    png_uint_32 W=png_get_image_width(png,info);
-    png_uint_32 H=png_get_image_height(png,info);
-    png_byte colorType=png_get_color_type(png,info);
-    png_byte bitDepth=png_get_bit_depth(png,info);
-
-    if(bitDepth==16) png_set_strip_16(png);
-    if(colorType==PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
-    if(colorType==PNG_COLOR_TYPE_GRAY && bitDepth<8) png_set_expand_gray_1_2_4_to_8(png);
-    if(png_get_valid(png,info,PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
-    if(colorType==PNG_COLOR_TYPE_GRAY || colorType==PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
-
-    png_read_update_info(png,info);
-    const png_size_t rowBytes=png_get_rowbytes(png,info);
-    const int channels=(int)png_get_channels(png,info);
-
-    unsigned char* raw=new unsigned char[rowBytes*H];
-    png_bytep* rows=new png_bytep[H];
-    for(png_uint_32 y=0;y<H;y++) rows[y]=raw+y*rowBytes;
-    png_read_image(png,rows);
-    png_read_end(png,nullptr);
-    delete[] rows;
-    png_destroy_read_struct(&png,&info,nullptr);
-    fclose(f);
-
-    unsigned char* flipped=new unsigned char[rowBytes*H];
-    for(png_uint_32 y=0;y<H;y++)
-        memcpy(flipped+y*rowBytes,raw+(H-1-y)*rowBytes,rowBytes);
-    delete[] raw;
-
-    uploadTexture2D(id,(int)W,(int)H,channels==4?GL_RGBA:GL_RGB,flipped);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
-    delete[] flipped;
-    return true;
-}
-
 void initTextures(){
     glGenTextures(TEX_COUNT,textures);
     if(!buildJPEGTexture(textures[TEX_FLOOR],"Textures/plank_flooring_04_diff_1k.jpg"))
@@ -319,8 +235,6 @@ void initTextures(){
     buildTexture(textures[TEX_WOOD_DARK],128,128, genDarkWoodTex);
     buildTexture(textures[TEX_WOOD_LIGHT],128,128,genLightWoodTex);
     buildTexture(textures[TEX_FABRIC_BED],128,128,genFabricTex);
-    if(!buildPNGTexture(textures[TEX_SPIDER_SKIN],"Textures/spider_texture.png"))
-        buildTexture(textures[TEX_SPIDER_SKIN],64,64, genSpiderSkinTex);
     if(!buildJPEGTexture(textures[TEX_PAINTING1],"Images/Mona_Lisa.jpg"))
         buildTexture(textures[TEX_PAINTING1],128,192, genMonaLisa);
     if(!buildJPEGTexture(textures[TEX_PAINTING2],"Images/City_View.jpg"))

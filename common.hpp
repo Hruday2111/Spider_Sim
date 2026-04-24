@@ -5,7 +5,7 @@
  * ╠══════════════════════════════════════════════════════════════════╣
  * ║  FEATURES:                                                       ║
  * ║  • Realistic organic spider (sphere-based body + tapered legs)  ║
- * ║  • Procedural textures (floor planks, walls, spider skin, etc.) ║
+ * ║  • Procedural textures for room materials and imported artwork  ║
  * ║  • Ceiling light toggle – key L                                 ║
  * ║  • Projected stencil shadow on floor                            ║
  * ║  • Full bedroom: bed, wardrobe, desk, dresser, bookshelf        ║
@@ -28,7 +28,7 @@
  * ║  ESC           – quit                                           ║
  * ╠══════════════════════════════════════════════════════════════════╣
  * ║  COMPILE:                                                        ║
- * ║  Linux : g++ main.cpp -o spider -lGL -lGLU -lglut -ljpeg -lpng16 -lm ║
+ * ║  Linux : g++ main.cpp -o spider -lGL -lGLU -lglut -ljpeg -lm   ║
  * ║  Mac   : g++ main.cpp -o spider -framework OpenGL               ║
  * ║                        -framework GLUT -lm                      ║
  * ║  Win   : g++ main.cpp -o spider -lfreeglut -lopengl32 -lglu32  ║

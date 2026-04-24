@@ -4,7 +4,7 @@
  * Compile commands remain unchanged because the implementation modules are
  * included below in the same order they originally appeared in main.cpp.
  *
- * Linux : g++ main.cpp -o spider -lGL -lGLU -lglut -ljpeg -lpng16 -lm
+ * Linux : g++ main.cpp -o spider -lGL -lGLU -lglut -ljpeg -lm
  * Mac   : g++ main.cpp -o spider -framework OpenGL -framework GLUT -lm
  * Win   : g++ main.cpp -o spider -lfreeglut -lopengl32 -lglu32
  */
@@ -35,7 +35,7 @@ int main(int argc,char**argv){
     glEnable(GL_NORMALIZE);
     glDisable(GL_COLOR_MATERIAL);
     glEnable(GL_TEXTURE_2D);
-    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,GL_TRUE);
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,GL_FALSE);
     glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER,GL_TRUE);
 
     glDisable(GL_FOG);

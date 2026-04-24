@@ -14,13 +14,8 @@
 // ════════════════════════════════════════════════════════════
 
 void spiderBodyMat(float spec=0.25f){
-    useTex(TEX_SPIDER_SKIN);
-    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-    glMatrixMode(GL_TEXTURE);
-    glLoadIdentity();
-    glScalef(3.2f,2.4f,1.0f);
-    glMatrixMode(GL_MODELVIEW);
-    mat(0.24f,0.20f,0.18f, 0.92f,0.88f,0.84f, spec,spec*0.8f,spec*0.6f, 55);
+    noTex();
+    mat(0.08f,0.05f,0.03f, 0.14f,0.09f,0.06f, 0.05f,0.04f,0.03f, 18);
 }
 
 void spiderLegMat(){

@@ -4,7 +4,7 @@ OpenGL/GLUT bedroom scene featuring a controllable spider that can move across t
 
 ## Features
 
-- Articulated spider model with textured body and animated legs
+- Articulated spider model with animated legs
 - Bedroom environment with bed, wardrobe, bookshelf, desk, dresser, armchair, clock, paintings, and door
 - Surface traversal system for floor, walls, ceiling, and climbable objects
 - Three camera modes:
@@ -13,7 +13,7 @@ OpenGL/GLUT bedroom scene featuring a controllable spider that can move across t
   - `3` Free orbit
 - Toggleable ceiling light with smooth brightness transition
 - Animated bedroom door
-- Procedural and image-based textures
+- Procedural room textures and wall art images
 
 ## Controls
 
@@ -36,7 +36,7 @@ OpenGL/GLUT bedroom scene featuring a controllable spider that can move across t
 ### Linux
 
 ```bash
-g++ main.cpp -o spider -lGL -lGLU -lglut -ljpeg -lpng16 -lm
+g++ main.cpp -o spider -lGL -lGLU -lglut -ljpeg -lm
 ```
 
 ### macOS
@@ -69,7 +69,7 @@ g++ main.cpp -o spider -lfreeglut -lopengl32 -lglu32
 
 ## Assets
 
-- `Textures/` contains surface and spider texture assets
+- `Textures/` contains room surface texture assets
 - `Images/` contains wall art images
 
 ## Notes

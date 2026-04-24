@@ -75,4 +75,3 @@ g++ main.cpp -o spider -lfreeglut -lopengl32 -lglu32
 ## Notes
 
 - The project uses the fixed-function OpenGL pipeline for portability and simplicity.
-- The workspace currently includes a compiled `spider` binary; you can rebuild it at any time with the commands above.
